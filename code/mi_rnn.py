@@ -3,7 +3,6 @@ from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 
 DIR = '/tmp/tensorflow/mnist/input_data'
-H1_UNITS = 100
 START_SEQ = 0
 SEQ_SIZE = 28 * 28
 BOTTLENECK_SIZE = 32
@@ -13,7 +12,6 @@ DECODER_OUTPUT = 1
 NB_EPOCHS = 500
 TRAIN_BATCH = 200
 BETA = 0.001
-BIT_SIZE = 1
 
 
 def tf_binarize(images, threshold=0.1):
