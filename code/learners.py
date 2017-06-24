@@ -8,9 +8,10 @@ class Learner(ABC):
         self.net = network
         self.learning_rate = learning_rate
         self.train_batch = train_batch
+        self.loss_op = self.loss()
 
         with tf.name_scope('train'):
-            self.train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss())
+            self.train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_op)
 
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
@@ -25,7 +26,7 @@ class Learner(ABC):
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
 
-        _, current_loss = self.sess.run([self.train_step, self.loss()], feed_dict=feed_dict)
+        _, current_loss = self.sess.run([self.train_step, self.loss_op], feed_dict=feed_dict)
 
         return current_loss
 
