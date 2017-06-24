@@ -21,6 +21,7 @@ def main(beta, learning_rate, train):
     sfnn = StochasticFeedForwardNetwork(input_size, HIDDEN_SIZE, BOTTLENECK_SIZE, output_size)
     learner = SupervisedLossLearner(sfnn, beta, learning_rate, TRAIN_BATCH)
     epoch_batches = int(mnist.train.num_examples / TRAIN_BATCH)
+    best_accuracy = 0
 
     for epoch in range(NB_EPOCHS):
         print('\nEpoch:', epoch)
@@ -37,6 +38,10 @@ def main(beta, learning_rate, train):
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / epoch_batches)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
+
+        if test_accuracy > best_accuracy:
+            best_accuracy = test_accuracy
+            print('Best accuracy')
 
     learner.sess.close()
 
