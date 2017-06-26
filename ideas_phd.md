@@ -28,6 +28,7 @@ Each sentence is embedded twice, first embedding is combined with question embed
 ### DRAW
 Gregor et. al. (2015)
 
+Instead of creating an image instantly, it uses a recurrent neural network as both the encoder and decoder portions of a typical variational autoencoder. Every timestep, a new latent code is passed from the encoder to the decoder.
 
 ### Teaching Machines to Read and Comprehend
 Hermann et. al. (Nov 2015)
@@ -42,6 +43,8 @@ Graves, Wayne et. al. (2016)
 Introduces differentiable neural computer (DNC). Combine the advantages of neural and computational processing by providing a neural network with read–write access to external memory. Access to memory is narrowly focused, minimizing interference among memoranda and enabling long-term storage. DNC uses differentiable attention mechanisms to access memory.
 
 We keep track of consecutively written locations in atemporal link matrix which gives ability to recover sequences.
+
+Memory can be searched based on the content of each location, or the associative temporal links can be followed forward and backward to recall information written in sequence or in reverse.
 
 ### Other papers
 - Generating Sequences with Recurrent Neural Networks, Graves (2013)

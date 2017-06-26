@@ -54,9 +54,11 @@ Apply that to RNN
 
 # June 20th
 Normalising flow without score function does not work as proposed $f$ is not differentiable. Back to mutual information for RNNs
+- Try max I(Z, future output)
 - Try overfitting RNN
 - Try new parametrisation for r(z)
 - Try new graphical model: $z$ <- $x_{1:t}$ -> $y = x_{t+1:T}$ 
+- Try linking $z_1$ -> $z_2$ -> $z_3$
 
 
 
