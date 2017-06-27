@@ -5,13 +5,14 @@ from tools import kl_divergence_with_std
 
 class Learner(ABC):
     def __init__(self, network, learning_rate, train_batch):
+        self.lr = tf.placeholder(tf.float32)
         self.net = network
         self.learning_rate = learning_rate
         self.train_batch = train_batch
         self.loss_op = self.loss()
 
         with tf.name_scope('train'):
-            self.train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_op)
+            self.train_step = tf.train.AdamOptimizer(self.lr).minimize(self.loss_op)
 
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
@@ -21,8 +22,13 @@ class Learner(ABC):
     def loss(self):
         pass
 
-    def train_network(self, batch_xs, batch_ys):
-        feed_dict = {self.net.x: batch_xs}
+    def train_network(self, batch_xs, batch_ys, learning_rate):
+        if learning_rate:
+            self.learning_rate = learning_rate
+        feed_dict = {
+            self.net.x: batch_xs,
+            self.lr: self.learning_rate
+        }
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
 
