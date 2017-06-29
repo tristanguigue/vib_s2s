@@ -29,7 +29,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, examples):
     learner = PredictionLossLearner(srnn, beta, learning_rate, TRAIN_BATCH)
     epoch_batches = int(examples / TRAIN_BATCH)
     former_loss = None
-    last_update = None
+    last_update = 0
 
     for epoch in range(NB_EPOCHS):
         print('\nEpoch:', epoch)
@@ -43,7 +43,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, examples):
 
         if former_loss is not None and total_loss >= former_loss:
             learning_rate /= 2
-        elif last_update is not None and epoch - last_update > LEARNING_RATE_INCREASE_DELTA:
+        elif epoch - last_update > LEARNING_RATE_INCREASE_DELTA:
             learning_rate *= 2
             last_update = epoch
         former_loss = total_loss
