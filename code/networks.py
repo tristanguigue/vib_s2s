@@ -3,7 +3,7 @@ from tools import tf_binarize
 from abc import ABC
 
 
-class SotchasticNetwork(ABC):
+class StochasticNetwork(ABC):
     def __init__(self, bottleneck_size):
         with tf.name_scope('stochastic_layer'):
             standard_mu = tf.zeros(bottleneck_size)
@@ -18,7 +18,7 @@ class SotchasticNetwork(ABC):
         return tf.Variable(tf.constant(0.0, shape=shape), name=name)
 
 
-class StochasticFeedForwardNetwork(SotchasticNetwork):
+class StochasticFeedForwardNetwork(StochasticNetwork):
     def __init__(self, input_size, hidden_size, bottleneck_size, output_size):
         super().__init__(bottleneck_size)
         encoder_output = 2 * bottleneck_size
@@ -61,13 +61,14 @@ class StochasticFeedForwardNetwork(SotchasticNetwork):
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 
-class StochasticRNN(SotchasticNetwork):
-    def __init__(self, input_size, hidden_size, bottleneck_size, output_size):
+class StochasticRNN(StochasticNetwork):
+    def __init__(self, input_size, hidden_size, bottleneck_size, output_size, layers):
         super().__init__(bottleneck_size)
         self.input_size = input_size
         self.output_size = output_size
 
-        stack = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+        cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+        stack = tf.contrib.rnn.MultiRNNCell([cell] * layers)
         encoder_output = 2 * bottleneck_size
 
         with tf.name_scope('input'):

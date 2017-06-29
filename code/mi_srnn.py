@@ -17,14 +17,16 @@ def cut_seq(seq, start_pos, seq_length):
     return seq[:, start_pos:start_pos + seq_length]
 
 
-def main(beta, learning_rate, start_pos, seq_length):
+def main(beta, learning_rate, start_pos, seq_length, layers, examples):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
+    if not examples:
+        examples = mnist.train.num_examples
 
-    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1)
+    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers)
     learner = PredictionLossLearner(srnn, beta, learning_rate, TRAIN_BATCH)
-    epoch_batches = int(mnist.train.num_examples / TRAIN_BATCH)
+    epoch_batches = int(examples / TRAIN_BATCH)
     former_loss = None
 
     for epoch in range(NB_EPOCHS):
@@ -41,8 +43,10 @@ def main(beta, learning_rate, start_pos, seq_length):
             learning_rate /= 2
         former_loss = total_loss
 
-        train_accuracy = learner.test_network(cut_seq(mnist.train.images, start_pos, seq_length), None)
-        test_accuracy = learner.test_network(cut_seq(mnist.test.images, start_pos, seq_length), None)
+        train_accuracy = learner.test_network(
+            cut_seq(mnist.train.images[:examples], start_pos, seq_length), None)
+        test_accuracy = learner.test_network(
+            cut_seq(mnist.test.images, start_pos, seq_length), None)
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / epoch_batches)
@@ -54,18 +58,18 @@ def main(beta, learning_rate, start_pos, seq_length):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--beta', metavar='int', type=float, const=BETA, nargs='?', default=BETA,
-        help='the value of beta, mutual information regulariser')
-    parser.add_argument(
-        '--rate', metavar='int', type=float, const=LEARNING_RATE, nargs='?', default=LEARNING_RATE,
-        help='the learning rate for the Adam optimiser')
-    parser.add_argument(
-        '--start', metavar='int', type=int, const=0, nargs='?', default=0,
-        help='start position in sequence')
-    parser.add_argument(
-        '--length', metavar='int', type=int, nargs='?',
-        help='length of sequence')
+    parser.add_argument('--beta', type=float, default=BETA,
+                        help='the value of beta, mutual information regulariser')
+    parser.add_argument('--rate', type=float, default=LEARNING_RATE,
+                        help='the learning rate for the Adam optimiser')
+    parser.add_argument('--start', type=int, default=0,
+                        help='start position in sequence')
+    parser.add_argument('--length', type=int,
+                        help='length of sequence')
+    parser.add_argument('--examples', type=int,
+                        help='number of training examples')
+    parser.add_argument('--layers', type=int, default=2,
+                        help='number of rnn layers')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, args.start, args.length)
+    main(args.beta, args.rate, args.start, args.length, args.layers, args.examples)
