@@ -5,6 +5,7 @@ from abc import ABC
 
 class StochasticNetwork(ABC):
     def __init__(self, bottleneck_size):
+        self.bottleneck_size = bottleneck_size
         with tf.name_scope('stochastic_layer'):
             standard_mu = tf.zeros(bottleneck_size)
             standard_sigma = tf.ones(bottleneck_size)
@@ -62,17 +63,17 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
 
 
 class StochasticRNN(StochasticNetwork):
-    def __init__(self, input_size, hidden_size, bottleneck_size, output_size, layers):
+    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers):
         super().__init__(bottleneck_size)
-        self.input_size = input_size
+        self.seq_size = seq_size
         self.output_size = output_size
 
-        cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
-        stack = tf.contrib.rnn.MultiRNNCell([cell] * layers)
+        stack = tf.contrib.rnn.MultiRNNCell(
+            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
         encoder_output = 2 * bottleneck_size
 
         with tf.name_scope('input'):
-            self.x = tf.placeholder(tf.float32, [None, input_size], name='x-input')
+            self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
             self.inputs = tf.expand_dims(tf_binarize(self.x), 2)
 
         with tf.name_scope('encoder'):
@@ -94,7 +95,7 @@ class StochasticRNN(StochasticNetwork):
         z = self.mu + tf.matmul(self.sigma, epsilon)
 
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
-        self.decoder_output = tf.reshape(decoder_output, [-1, input_size, output_size])
+        self.decoder_output = tf.reshape(decoder_output, [-1, seq_size, output_size])
 
         true_pixels = self.inputs[:, 1:]
         predicted_pixels = tf.round(tf.sigmoid(self.decoder_output[:, :-1]))

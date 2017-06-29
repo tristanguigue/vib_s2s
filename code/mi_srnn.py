@@ -68,7 +68,7 @@ if __name__ == '__main__':
                         help='length of sequence')
     parser.add_argument('--examples', type=int,
                         help='number of training examples')
-    parser.add_argument('--layers', type=int, default=2,
+    parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
 
     args = parser.parse_args()

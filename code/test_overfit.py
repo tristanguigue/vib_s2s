@@ -56,7 +56,7 @@ sess.run(tf.global_variables_initializer())
 former_loss = None
 last_update = None
 
-for epoch in range(1000):
+for epoch in range(10000):
     print('\nEpoch:', epoch)
     start = time.time()
 
