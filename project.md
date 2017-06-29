@@ -60,5 +60,8 @@ Normalising flow without score function does not work as proposed $f$ is not dif
 - Try new graphical model: $z$ <- $x_{1:t}$ -> $y = x_{t+1:T}$ 
 - Try linking $z_1$ -> $z_2$ -> $z_3$
 
+# June 27th
+- Use $h_{t+2} = \phi(W_h h_{t+1} + W_z z + b)$ might have to do in Theano
+
 
 

@@ -7,7 +7,7 @@ import time
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 32
-NB_EPOCHS = 500
+NB_EPOCHS = 10000
 TRAIN_BATCH = 200
 LEARNING_RATE = 0.001
 BETA = 0.001

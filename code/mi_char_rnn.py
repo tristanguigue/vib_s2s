@@ -7,7 +7,7 @@ from tools import TextLoader
 DATA_DIR = 'data/shakespeare'
 HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 32
-NB_EPOCHS = 500
+NB_EPOCHS = 10000
 TRAIN_BATCH = 200
 SEQ_LENGTH = 20
 LEARNING_RATE = 0.001
