@@ -3,7 +3,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 import time
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
-input_size = 30
+input_size = 50
 hidden_size = 128
 output_size = 1
 start_pos = 300
@@ -53,6 +53,7 @@ with tf.name_scope('train'):
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 former_loss = None
+last_increase = None
 
 for epoch in range(1000):
     print('\nEpoch:', epoch)
@@ -73,7 +74,7 @@ for epoch in range(1000):
     if former_loss is not None and current_loss >= former_loss:
         learning_rate /= 2
         last_increase = epoch
-    elif epoch - last_increase > 20:
+    elif last_increase is not None and epoch - last_increase > 20:
         learning_rate *= 2
     former_loss = current_loss
 
