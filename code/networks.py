@@ -101,3 +101,43 @@ class StochasticRNN(StochasticNetwork):
         predicted_pixels = tf.round(tf.sigmoid(self.decoder_output[:, :-1]))
         accurate_predictions = tf.equal(predicted_pixels, true_pixels)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+class StochasticCharRNN(StochasticNetwork):
+    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers):
+        super().__init__(bottleneck_size)
+        self.seq_size = seq_size
+        self.output_size = output_size
+
+        stack = tf.contrib.rnn.MultiRNNCell(
+            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
+        encoder_output = 2 * bottleneck_size
+
+        with tf.name_scope('input'):
+            self.x = tf.placeholder(tf.int64, [None, seq_size], name='x-input')
+            self.embedding = tf.get_variable('embedding', [output_size, hidden_size])
+
+        with tf.name_scope('encoder'):
+            out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
+            out_biases = self.bias_variable('out_biases', [encoder_output])
+
+        with tf.name_scope('decoder'):
+            decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
+            decoder_biases = self.bias_variable('decoder_biases', [output_size])
+
+        self.inputs = tf.nn.embedding_lookup(self.embedding, self.x)
+        outputs, state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
+        flat_outputs = tf.reshape(outputs, [-1, hidden_size])
+
+        encoder_output = tf.matmul(flat_outputs, out_weights) + out_biases
+
+        self.mu = encoder_output[:, :bottleneck_size]
+        self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
+        epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
+        z = self.mu + tf.matmul(self.sigma, epsilon)
+
+        decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
+        self.decoder_output = tf.reshape(decoder_output, [-1, seq_size, output_size])
+
+        true_char = self.x[:, 1:]
+        predicted_char = tf.arg_max(self.decoder_output[:, :-1], 2)
+        accurate_predictions = tf.equal(predicted_char, true_char)
+        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))

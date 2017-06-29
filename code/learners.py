@@ -51,6 +51,20 @@ class Learner(ABC):
 
         return total_accuracy / nb_batches
 
+    def test_network_loader(self, loader):
+        total_accuracy = 0
+        nb_batches = loader.num_batches
+        loader.reset_batch_pointer()
+        for i in range(nb_batches):
+            batch_xs, batch_ys = loader.next_batch()
+            feed_dict = {self.net.x: batch_xs}
+            if batch_ys:
+                feed_dict.update({self.net.y_true: batch_ys})
+            batch_accuracy = self.sess.run(self.net.accuracy, feed_dict=feed_dict)
+            total_accuracy += batch_accuracy
+
+        return total_accuracy / nb_batches
+
 
 class SupervisedLossLearner(Learner):
     def __init__(self, network, beta, learning_rate, train_batch):
@@ -83,4 +97,22 @@ class PredictionLossLearner(Learner):
 
         if self.beta:
             return tf.reduce_mean(cross_entropy + self.beta * kl[:, :-1])
+        return tf.reduce_mean(cross_entropy)
+
+
+class CharPredictionLossLearner(Learner):
+    def __init__(self, network, beta, learning_rate, train_batch):
+        self.beta = beta
+        super().__init__(network, learning_rate, train_batch)
+
+    def loss(self):
+        true_char = tf.one_hot(indices=self.net.x[:, 1:], depth=self.net.output_size)
+        cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=true_char, logits=self.net.decoder_output[:, :-1])
+
+        kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
+        kl = tf.reshape(kl, [-1, self.net.seq_size])
+
+        if self.beta:
+            return tf.reduce_mean(cross_entropy) + self.beta * tf.reduce_mean(kl[:, :-1])
         return tf.reduce_mean(cross_entropy)
