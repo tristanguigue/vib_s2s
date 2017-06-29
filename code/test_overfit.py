@@ -18,8 +18,7 @@ def tf_binarize(images, threshold=0.1):
 
 mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
 
-cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
-stack = tf.contrib.rnn.MultiRNNCell([cell] * layers)
+stack = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
 
 with tf.name_scope('input'):
     x = tf.placeholder(tf.float32, [None, input_size], name='x-input')
