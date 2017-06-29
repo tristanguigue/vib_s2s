@@ -79,7 +79,7 @@ class PredictionLossLearner(Learner):
             labels=true_pixels, logits=self.net.decoder_output[:, :-1])
 
         kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
-        kl = tf.reshape(kl, [-1, self.net.input_size, self.net.output_size])
+        kl = tf.reshape(kl, [-1, self.net.seq_size, self.net.output_size])
 
         if self.beta:
             return tf.reduce_mean(cross_entropy + self.beta * kl[:, :-1])
