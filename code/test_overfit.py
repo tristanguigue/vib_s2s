@@ -76,6 +76,7 @@ for epoch in range(1000):
         last_increase = epoch
     elif last_increase is not None and epoch - last_increase > 20:
         learning_rate *= 2
+        last_increase = None
     former_loss = current_loss
 
     print('Time: ', time.time() - start)
