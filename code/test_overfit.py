@@ -10,6 +10,7 @@ start_pos = 300
 train_batch = 10
 examples = 10
 learning_rate = 0.005
+layers = 2
 
 
 def tf_binarize(images, threshold=0.1):
@@ -17,7 +18,8 @@ def tf_binarize(images, threshold=0.1):
 
 mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
 
-stack = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+stack = tf.contrib.rnn.MultiRNNCell([cell] * layers)
 
 with tf.name_scope('input'):
     x = tf.placeholder(tf.float32, [None, input_size], name='x-input')
@@ -53,7 +55,7 @@ with tf.name_scope('train'):
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 former_loss = None
-last_increase = None
+last_update = None
 
 for epoch in range(1000):
     print('\nEpoch:', epoch)
@@ -73,10 +75,10 @@ for epoch in range(1000):
 
     if former_loss is not None and current_loss >= former_loss:
         learning_rate /= 2
-        last_increase = epoch
-    elif last_increase is not None and epoch - last_increase > 20:
+        last_update = epoch
+    elif last_update is not None and epoch - last_update > 20:
         learning_rate *= 2
-        last_increase = None
+        last_update = epoch
     former_loss = current_loss
 
     print('Time: ', time.time() - start)
