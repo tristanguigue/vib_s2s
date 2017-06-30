@@ -36,24 +36,7 @@ class Learner(ABC):
 
         return current_loss
 
-    def next_batch(self, items, i):
-        return items[i * self.train_batch: (i + 1) * self.train_batch]
-
-    def test_network(self, data, labels):
-        total_accuracy = 0
-        total_loss = 0
-        nb_batches = data.shape[0] // self.train_batch
-        for i in range(nb_batches):
-            feed_dict = {self.net.x: self.next_batch(data, i)}
-            if labels is not None:
-                feed_dict.update({self.net.y_true: self.next_batch(labels, i)})
-            batch_loss, batch_accuracy = self.sess.run([self.loss_op, self.net.accuracy], feed_dict=feed_dict)
-            total_accuracy += batch_accuracy
-            total_loss += batch_loss
-
-        return total_loss / nb_batches, total_accuracy / nb_batches
-
-    def test_network_loader(self, loader):
+    def test_network(self, loader):
         total_accuracy = 0
         total_loss = 0
         nb_batches = loader.num_batches

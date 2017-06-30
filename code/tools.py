@@ -21,6 +21,26 @@ def kl_divergence(mu, sigma, mu0, sigma0):
         tf.log(tf.square(sigma0)) - tf.log(tf.square(sigma)) - 1, 1)
 
 
+class Batcher():
+    def __init__(self, data, labels, batch_size):
+        self.data = data
+        self.batch_size = batch_size
+        self.labels = labels
+        self.pointer = 0
+        self.num_batches = int(data.shape[0] / batch_size)
+
+    def reset_batch_pointer(self):
+        self.pointer = 0
+
+    def next_batch(self):
+        x = self.data[self.pointer * self.batch_size: (self.pointer + 1) * self.batch_size]
+        y = None
+        if self.labels:
+            y = self.labels[self.pointer * self.batch_size: (self.pointer + 1) * self.batch_size]
+        self.pointer += 1
+        return x, y
+
+
 class TextLoader():
     def __init__(self, data_dir, batch_size, seq_length, input_file, encoding='utf-8'):
         self.data_dir = data_dir

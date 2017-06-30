@@ -15,13 +15,13 @@ BETA = 0.001
 LEARNING_RATE_INCREASE_DELTA = 10
 
 
-def main(beta, learning_rate, train):
+def main(beta, learning_rate, layers):
     train_data_loader = TextLoader(DATA_DIR, TRAIN_BATCH, SEQ_LENGTH, 'train_input.txt')
     test_data_loader = TextLoader(DATA_DIR, TRAIN_BATCH, SEQ_LENGTH, 'test_input.txt')
 
     vocab_size = train_data_loader.vocab_size
 
-    srnn = StochasticCharRNN(SEQ_LENGTH, HIDDEN_SIZE, BOTTLENECK_SIZE, vocab_size, 1)
+    srnn = StochasticCharRNN(SEQ_LENGTH, HIDDEN_SIZE, BOTTLENECK_SIZE, vocab_size, layers)
     learner = CharPredictionLossLearner(srnn, beta, learning_rate, TRAIN_BATCH)
     former_loss = None
     last_update = 0
@@ -62,6 +62,8 @@ if __name__ == '__main__':
         help='the value of beta, mutual information regulariser')
     parser.add_argument('--rate', type=float, default=LEARNING_RATE,
         help='the learning rate for the Adam optimiser')
+    parser.add_argument('--layers', type=int, default=1,
+                        help='number of rnn layers')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, train=True)
+    main(args.beta, args.rate, args.layers)
