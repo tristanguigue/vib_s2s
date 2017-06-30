@@ -32,12 +32,13 @@ def main(beta, learning_rate, train):
             batch_xs, batch_ys = mnist.train.next_batch(TRAIN_BATCH)
             total_loss += learner.train_network(batch_xs, batch_ys, LEARNING_RATE)
 
-        train_accuracy = learner.test_network(mnist.train.images, mnist.train.labels)
-        test_accuracy = learner.test_network(mnist.test.images, mnist.test.labels)
+        train_loss, train_accuracy = learner.test_network(mnist.train.images, mnist.train.labels)
+        test_loss, test_accuracy = learner.test_network(mnist.test.images, mnist.test.labels)
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / epoch_batches)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
+        print('Train loss: ', train_loss, ', test loss: ', test_loss)
 
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy

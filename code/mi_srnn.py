@@ -48,15 +48,16 @@ def main(beta, learning_rate, start_pos, seq_length, layers, examples):
             last_update = epoch
         former_loss = total_loss
 
-        train_accuracy = learner.test_network(
+        train_loss, train_accuracy = learner.test_network(
             cut_seq(mnist.train.images[:examples], start_pos, seq_length), None)
-        test_accuracy = learner.test_network(
+        test_loss, test_accuracy = learner.test_network(
             cut_seq(mnist.test.images, start_pos, seq_length), None)
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / epoch_batches)
         print('Learning rate: ', learning_rate)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
+        print('Train loss: ', train_loss, ', test loss: ', test_loss)
 
     learner.sess.close()
 

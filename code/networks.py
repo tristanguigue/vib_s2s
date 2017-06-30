@@ -4,8 +4,9 @@ from abc import ABC
 
 
 class StochasticNetwork(ABC):
-    def __init__(self, bottleneck_size):
+    def __init__(self, bottleneck_size, update_prior):
         self.bottleneck_size = bottleneck_size
+        self.update_prior = update_prior
         with tf.name_scope('stochastic_layer'):
             standard_mu = tf.zeros(bottleneck_size)
             standard_sigma = tf.ones(bottleneck_size)
@@ -20,14 +21,18 @@ class StochasticNetwork(ABC):
 
 
 class StochasticFeedForwardNetwork(StochasticNetwork):
-    def __init__(self, input_size, hidden_size, bottleneck_size, output_size):
-        super().__init__(bottleneck_size)
+    def __init__(self, input_size, hidden_size, bottleneck_size, output_size, update_prior):
+        super().__init__(bottleneck_size, update_prior)
         encoder_output = 2 * bottleneck_size
 
         # Variables
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, input_size], name='x-input')
             self.y_true = tf.placeholder(tf.float32, [None, output_size], name='y-input')
+
+        with tf.name_scope('prior'):
+            self.sigma0 = tf.Variable(tf.ones(bottleneck_size), name='prior-variance')
+            self.mu0 = tf.Variable(tf.zeros(bottleneck_size), name='prior-mean')
 
         with tf.name_scope('encoder_h1'):
             self.h1_weights = self.weight_variable('h1_weights', [input_size, hidden_size])

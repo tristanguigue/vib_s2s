@@ -41,18 +41,21 @@ class Learner(ABC):
 
     def test_network(self, data, labels):
         total_accuracy = 0
+        total_loss = 0
         nb_batches = data.shape[0] // self.train_batch
         for i in range(nb_batches):
             feed_dict = {self.net.x: self.next_batch(data, i)}
             if labels is not None:
                 feed_dict.update({self.net.y_true: self.next_batch(labels, i)})
-            batch_accuracy = self.sess.run(self.net.accuracy, feed_dict=feed_dict)
+            batch_loss, batch_accuracy = self.sess.run([self.loss_op, self.net.accuracy], feed_dict=feed_dict)
             total_accuracy += batch_accuracy
+            total_loss += batch_loss
 
-        return total_accuracy / nb_batches
+        return total_loss / nb_batches, total_accuracy / nb_batches
 
     def test_network_loader(self, loader):
         total_accuracy = 0
+        total_loss = 0
         nb_batches = loader.num_batches
         loader.reset_batch_pointer()
         for i in range(nb_batches):
@@ -60,10 +63,11 @@ class Learner(ABC):
             feed_dict = {self.net.x: batch_xs}
             if batch_ys:
                 feed_dict.update({self.net.y_true: batch_ys})
-            batch_accuracy = self.sess.run(self.net.accuracy, feed_dict=feed_dict)
+            batch_loss, batch_accuracy = self.sess.run([self.loss_op, self.net.accuracy], feed_dict=feed_dict)
             total_accuracy += batch_accuracy
+            total_loss += batch_loss
 
-        return total_accuracy / nb_batches
+        return total_loss / nb_batches, total_accuracy / nb_batches
 
 
 class SupervisedLossLearner(Learner):
