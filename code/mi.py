@@ -23,7 +23,7 @@ def main(beta, learning_rate, train):
     learner = SupervisedLossLearner(sfnn, beta, learning_rate, BATCH_SIZE)
     epoch_batches = int(mnist.train.num_examples / BATCH_SIZE)
     train_loader = Batcher(mnist.train.images, mnist.train.labels, BATCH_SIZE)
-    test_loader = Batcher(mnist.train.images, mnist.test.labels, BATCH_SIZE)
+    test_loader = Batcher(mnist.test.images, mnist.test.labels, BATCH_SIZE)
     best_accuracy = 0
 
     for epoch in range(NB_EPOCHS):
