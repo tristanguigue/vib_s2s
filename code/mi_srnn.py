@@ -25,7 +25,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, examples):
     if not examples:
         examples = mnist.train.num_examples
 
-    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers)
+    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True)
     learner = PredictionLossLearner(srnn, beta, learning_rate, TRAIN_BATCH)
     epoch_batches = int(examples / TRAIN_BATCH)
     former_loss = None

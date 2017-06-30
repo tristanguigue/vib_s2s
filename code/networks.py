@@ -68,8 +68,8 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
 
 
 class StochasticRNN(StochasticNetwork):
-    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers):
-        super().__init__(bottleneck_size)
+    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior):
+        super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
 
