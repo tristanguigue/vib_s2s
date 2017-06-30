@@ -18,7 +18,7 @@ def main(beta, learning_rate, train):
     input_size = mnist.train.images.shape[1]
     output_size = mnist.train.labels.shape[1]
 
-    sfnn = StochasticFeedForwardNetwork(input_size, HIDDEN_SIZE, BOTTLENECK_SIZE, output_size)
+    sfnn = StochasticFeedForwardNetwork(input_size, HIDDEN_SIZE, BOTTLENECK_SIZE, output_size, True)
     learner = SupervisedLossLearner(sfnn, beta, learning_rate, TRAIN_BATCH)
     epoch_batches = int(mnist.train.num_examples / TRAIN_BATCH)
     best_accuracy = 0
@@ -30,7 +30,7 @@ def main(beta, learning_rate, train):
         total_loss = 0
         for i in range(epoch_batches):
             batch_xs, batch_ys = mnist.train.next_batch(TRAIN_BATCH)
-            total_loss += learner.train_network(batch_xs, batch_ys)
+            total_loss += learner.train_network(batch_xs, batch_ys, LEARNING_RATE)
 
         train_accuracy = learner.test_network(mnist.train.images, mnist.train.labels)
         test_accuracy = learner.test_network(mnist.test.images, mnist.test.labels)

@@ -1,6 +1,6 @@
 import tensorflow as tf
 from abc import ABC, abstractmethod
-from tools import kl_divergence_with_std
+from tools import kl_divergence_with_std, kl_divergence
 
 
 class Learner(ABC):
@@ -75,7 +75,11 @@ class SupervisedLossLearner(Learner):
         cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(
             labels=self.net.y_true, logits=self.net.decoder_output)
 
-        kl_loss = kl_divergence_with_std(self.net.mu, self.net.sigma)
+        if self.net.update_prior:
+            kl_loss = kl_divergence(
+                self.net.mu, self.net.sigma, self.net.mu0, self.net.sigma0)
+        else:
+            kl_loss = kl_divergence_with_std(self.net.mu, self.net.sigma)
 
         if self.beta:
             return tf.reduce_mean(cross_entropy_loss + self.beta * kl_loss)
