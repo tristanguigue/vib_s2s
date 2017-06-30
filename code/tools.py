@@ -15,6 +15,12 @@ def kl_divergence_with_std(mu, sigma):
         tf.square(mu) + tf.square(sigma) - tf.log(tf.square(sigma)) - 1, 1)
 
 
+def kl_divergence(mu, sigma, mu0, sigma0):
+    return 0.5 * tf.reduce_sum(
+        tf.square((mu - mu0) / sigma0) + tf.square(sigma / sigma0) +
+        tf.log(tf.square(sigma0)) - tf.log(tf.square(sigma)) - 1, 1)
+
+
 class TextLoader():
     def __init__(self, data_dir, batch_size, seq_length, input_file, encoding='utf-8'):
         self.data_dir = data_dir
