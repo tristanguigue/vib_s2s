@@ -21,7 +21,7 @@ def main(beta, learning_rate, layers):
 
     vocab_size = train_data_loader.vocab_size
 
-    srnn = StochasticCharRNN(SEQ_LENGTH, HIDDEN_SIZE, BOTTLENECK_SIZE, vocab_size, layers)
+    srnn = StochasticCharRNN(SEQ_LENGTH, HIDDEN_SIZE, BOTTLENECK_SIZE, vocab_size, layers, True)
     learner = CharPredictionLossLearner(srnn, beta, learning_rate, TRAIN_BATCH)
     former_loss = None
     last_update = 0

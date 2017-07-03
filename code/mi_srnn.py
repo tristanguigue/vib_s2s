@@ -13,6 +13,7 @@ BATCH_SIZE = 500
 LEARNING_RATE = 0.001
 BETA = 0.001
 LEARNING_RATE_INCREASE_DELTA = 10
+LABEL_SELECTED = 6
 
 
 def cut_seq(seq, start_pos, seq_length):
@@ -24,8 +25,8 @@ def main(beta, learning_rate, start_pos, seq_length, layers):
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
 
-    train_data = cut_seq(mnist.train.images[mnist.train.labels == 6], start_pos, seq_length)
-    test_data = cut_seq(mnist.test.images[mnist.test.labels == 6], start_pos, seq_length)
+    train_data = cut_seq(mnist.train.images[mnist.train.labels == LABEL_SELECTED], start_pos, seq_length)
+    test_data = cut_seq(mnist.test.images[mnist.test.labels == LABEL_SELECTED], start_pos, seq_length)
     train_loader = Batcher(train_data, None, BATCH_SIZE)
     test_loader = Batcher(test_data, None, BATCH_SIZE)
 

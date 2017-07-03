@@ -107,8 +107,8 @@ class StochasticRNN(StochasticNetwork):
         accurate_predictions = tf.equal(predicted_pixels, true_pixels)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 class StochasticCharRNN(StochasticNetwork):
-    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers):
-        super().__init__(bottleneck_size)
+    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior):
+        super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
 
