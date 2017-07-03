@@ -36,8 +36,8 @@ def main(beta, learning_rate, layers):
             batch_xs, _ = train_data_loader.next_batch()
             total_loss += learner.train_network(batch_xs, None, learning_rate)
 
-        train_loss, train_accuracy = learner.test_network_loader(train_data_loader)
-        test_loss, test_accuracy = learner.test_network_loader(test_data_loader)
+        train_loss, train_accuracy = learner.test_network(train_data_loader)
+        test_loss, test_accuracy = learner.test_network(test_data_loader)
 
         if former_loss is not None and total_loss >= former_loss:
             learning_rate /= 2
