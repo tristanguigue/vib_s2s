@@ -189,7 +189,7 @@ class Seq2Seq(StochasticNetwork):
                 pred_pixels = tf.reshape(pred_pixels, [-1, 1, 1])
 
                 pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                    stack, tf.cast(pred_pixels, tf.float32),
+                    stack_decoder, tf.cast(pred_pixels, tf.float32),
                     initial_state=pred_rnn_state, dtype=tf.float32)
 
 
