@@ -44,7 +44,7 @@ class Learner(ABC):
         for i in range(nb_batches):
             batch_xs, batch_ys = loader.next_batch()
             feed_dict = {self.net.x: batch_xs}
-            if batch_ys:
+            if batch_ys is not None:
                 feed_dict.update({self.net.y_true: batch_ys})
             batch_loss, batch_accuracy = self.sess.run([self.loss_op, self.net.accuracy], feed_dict=feed_dict)
             total_accuracy += batch_accuracy
@@ -71,6 +71,20 @@ class SupervisedLossLearner(Learner):
         if self.beta:
             return tf.reduce_mean(cross_entropy_loss + self.beta * kl_loss)
         return tf.reduce_mean(cross_entropy_loss)
+
+
+class PartialPredictionLossLearner(Learner):
+    def __init__(self, network, beta, learning_rate, train_batch):
+        self.beta = beta
+        super().__init__(network, learning_rate, train_batch)
+
+    def loss(self):
+        cross_entropy = self.net.pred_x_entropy
+        kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
+
+        if self.beta:
+            return tf.reduce_mean(cross_entropy + self.beta * kl)
+        return tf.reduce_mean(cross_entropy)
 
 
 class PredictionLossLearner(Learner):

@@ -106,6 +106,92 @@ class StochasticRNN(StochasticNetwork):
         predicted_pixels = tf.round(tf.sigmoid(self.decoder_output[:, :-1]))
         accurate_predictions = tf.equal(predicted_pixels, true_pixels)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+
+
+class Seq2Seq(StochasticNetwork):
+    def __init__(self, seq_size, partial_seq_size, output_seq_size, hidden_size,
+                 bottleneck_size, output_size, layers, update_prior):
+        super().__init__(bottleneck_size, update_prior)
+        self.partial_seq_size = partial_seq_size
+        self.output_seq_size = output_seq_size
+        self.output_size = output_size
+
+        stack = tf.contrib.rnn.MultiRNNCell(
+            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
+        encoder_output = 2 * bottleneck_size
+
+        with tf.name_scope('input'):
+            self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
+            self.inputs = tf.expand_dims(tf_binarize(self.x), 2)
+
+        with tf.name_scope('encoder'):
+            out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
+            out_biases = self.bias_variable('out_biases', [encoder_output])
+
+        with tf.name_scope('decoder'):
+            decoder_weights = self.weight_variable(
+                'decoder_weights', [bottleneck_size, self.output_size + 2 * hidden_size * layers])
+            decoder_biases = self.bias_variable('decoder_biases', [self.output_size])
+
+        with tf.name_scope('rnn_output'):
+            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size, output_size])
+            rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
+
+        with tf.variable_scope('rnn'):
+            outputs, state = tf.nn.dynamic_rnn(
+                stack, self.inputs[:, :self.partial_seq_size], dtype=tf.float32)
+
+        encoder_output = tf.matmul(outputs[:, -1], out_weights) + out_biases
+
+        self.mu = encoder_output[:, :bottleneck_size]
+        self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
+        epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
+
+        z = self.mu + tf.matmul(self.sigma, epsilon)
+
+        decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
+        pred_logits = decoder_output[:, :output_size]
+        new_state = decoder_output[:, output_size:]
+        new_state = tf.reshape(new_state, [layers, 2, -1, hidden_size])
+        print(new_state.get_shape())
+        new_state = tf.unstack(new_state)
+        new_state = tuple(
+            [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
+                for l in range(layers)])
+
+        with tf.variable_scope('new_rnn'):
+            true_pixels = self.inputs[:, self.partial_seq_size:]
+
+            # Get first prediction
+            pred_pixels = tf.round(tf.sigmoid(pred_logits))
+
+            # Get first cross entropies
+            self.pred_x_entropy = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=pred_logits, labels=tf.squeeze(true_pixels[:, 0])))
+            pred_rnn_state = new_state
+
+            pred_pixels = tf.reshape(pred_pixels, [-1, 1, 1])
+            pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
+                stack, tf.cast(pred_pixels, tf.float32),
+                initial_state=pred_rnn_state, dtype=tf.float32)
+
+        with tf.variable_scope('new_rnn', reuse=True):
+            # Loop to predict all the next pixels
+            for i in range(output_seq_size - 1):
+                pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
+                pred_pixels = tf.arg_max(pred_logits, 1)
+                pred_logits = tf.squeeze(pred_logits)
+                self.pred_x_entropy += tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+                    logits=pred_logits, labels=tf.squeeze(true_pixels[:, i + 1])))
+
+                pred_pixels = tf.reshape(pred_pixels, [-1, 1, 1])
+
+                pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
+                    stack, tf.cast(pred_pixels, tf.float32),
+                    initial_state=pred_rnn_state, dtype=tf.float32)
+
+
+
 class StochasticCharRNN(StochasticNetwork):
     def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior):
         super().__init__(bottleneck_size, update_prior)

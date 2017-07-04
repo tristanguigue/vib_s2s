@@ -35,7 +35,7 @@ class Batcher():
     def next_batch(self):
         x = self.data[self.pointer * self.batch_size: (self.pointer + 1) * self.batch_size]
         y = None
-        if self.labels:
+        if self.labels is not None:
             y = self.labels[self.pointer * self.batch_size: (self.pointer + 1) * self.batch_size]
         self.pointer += 1
         return x, y
