@@ -116,7 +116,9 @@ class Seq2Seq(StochasticNetwork):
         self.output_seq_size = output_seq_size
         self.output_size = output_size
 
-        stack = tf.contrib.rnn.MultiRNNCell(
+        stack_encoder = tf.contrib.rnn.MultiRNNCell(
+            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
+        stack_decoder = tf.contrib.rnn.MultiRNNCell(
             [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
         encoder_output = 2 * bottleneck_size
 
@@ -137,9 +139,9 @@ class Seq2Seq(StochasticNetwork):
             rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size, output_size])
             rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
 
-        with tf.variable_scope('rnn'):
+        with tf.variable_scope('rnn_encoder'):
             outputs, state = tf.nn.dynamic_rnn(
-                stack, self.inputs[:, :self.partial_seq_size], dtype=tf.float32)
+                stack_encoder, self.inputs[:, :self.partial_seq_size], dtype=tf.float32)
 
         encoder_output = tf.matmul(outputs[:, -1], out_weights) + out_biases
 
@@ -159,7 +161,7 @@ class Seq2Seq(StochasticNetwork):
             [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
                 for l in range(layers)])
 
-        with tf.variable_scope('new_rnn'):
+        with tf.variable_scope('rnn_decoder'):
             true_pixels = self.inputs[:, self.partial_seq_size:]
 
             # Get first prediction
@@ -172,10 +174,10 @@ class Seq2Seq(StochasticNetwork):
 
             pred_pixels = tf.reshape(pred_pixels, [-1, 1, 1])
             pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                stack, tf.cast(pred_pixels, tf.float32),
+                stack_decoder, tf.cast(pred_pixels, tf.float32),
                 initial_state=pred_rnn_state, dtype=tf.float32)
 
-        with tf.variable_scope('new_rnn', reuse=True):
+        with tf.variable_scope('rnn_decoder', reuse=True):
             # Loop to predict all the next pixels
             for i in range(output_seq_size - 1):
                 pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
