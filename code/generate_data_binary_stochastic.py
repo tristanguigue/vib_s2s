@@ -3,7 +3,7 @@ import numpy as np
 import time
 import math
 import matplotlib.pyplot as plt
-from tools import kl_divergence_with_std 
+from tools import kl_divergence 
 
 seq_size = 30
 hidden_size = 128
@@ -74,6 +74,10 @@ with tf.name_scope('input'):
 
     lr = tf.placeholder(tf.float32)
 
+with tf.name_scope('prior'):
+    sigma0 = tf.Variable(tf.ones(bottleneck_size), name='prior-variance')
+    mu0 = tf.Variable(tf.zeros(bottleneck_size), name='prior-mean')
+
 with tf.variable_scope('rnn'):
     outputs, state = tf.nn.dynamic_rnn(stack, inputs, dtype=tf.float32)
     encoder_weights = tf.get_variable('encoder_weights', shape=[hidden_size, encoder_output],
@@ -102,7 +106,7 @@ accurate_predictions = tf.equal(predicted_pixels, true_pixels)
 accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=true_pixels, logits=logits)
-kl_loss = kl_divergence_with_std(mu, sigma)
+kl_loss = kl_divergence(mu, sigma, mu0, sigma0)
 kl_loss = tf.reshape(kl_loss, [-1, seq_size, output_size])[:, :-1]
 
 if beta:
