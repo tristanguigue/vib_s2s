@@ -138,8 +138,9 @@ last_update = None
 train_losses = []
 test_losses = []
 lr_updates = 0
+min_test_loss = None
 
-for epoch in range(2000):
+for epoch in range(3000):
     print('\nEpoch:', epoch)
     start = time.time()
 
@@ -197,6 +198,7 @@ for epoch in range(2000):
     if lr_updates > 5:
         break
 
+print(min(test_losses))
 plt.plot(train_losses)
 plt.plot(test_losses)
 plt.show()
