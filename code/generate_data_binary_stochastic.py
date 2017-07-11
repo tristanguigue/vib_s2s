@@ -61,7 +61,8 @@ samples = np.asarray(samples)
 
 print(samples)
 
-np.save('generated_samples.npy', samples)
+# np.save('generated_samples.npy', samples)
+samples = np.load('data/generated_samples.npy')
 
 stack = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.BasicRNNCell(hidden_size) for _ in range(layers)])
 
