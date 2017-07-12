@@ -68,13 +68,19 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
 
 
 class StochasticRNN(StochasticNetwork):
-    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior):
+    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior,
+                 lstm=True):
         super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
 
+        if lstm:
+            cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+        else:
+            cell = tf.contrib.rnn.BasicRNNCell(hidden_size)
+
         stack = tf.contrib.rnn.MultiRNNCell(
-            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
+            [cell for _ in range(layers)])
         encoder_output = 2 * bottleneck_size
 
         with tf.name_scope('input'):
@@ -155,7 +161,6 @@ class Seq2Seq(StochasticNetwork):
         pred_logits = decoder_output[:, :output_size]
         new_state = decoder_output[:, output_size:]
         new_state = tf.reshape(new_state, [layers, 2, -1, hidden_size])
-        print(new_state.get_shape())
         new_state = tf.unstack(new_state)
         new_state = tuple(
             [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
