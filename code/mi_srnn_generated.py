@@ -9,7 +9,7 @@ import numpy as np
 DATA_DIR = 'data/generated_samples.npy'
 HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 128
-NB_EPOCHS = 1000
+NB_EPOCHS = 2000
 BATCH_SIZE = 500
 LEARNING_RATE = 0.0005
 BETA = 0.001
@@ -20,15 +20,13 @@ def cut_seq(seq, start_pos, seq_length):
     return seq[:, start_pos:start_pos + seq_length]
 
 
-def main(beta, learning_rate, start_pos, seq_length, layers):
+def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs):
     data = np.load(DATA_DIR)
     train_data = data[:TRAIN_TEST_SPLIT]
     test_data = data[TRAIN_TEST_SPLIT:]
 
     if not seq_length:
         seq_length = train_data.shape[1]
-
-    print(seq_length)
 
     train_data = cut_seq(train_data, start_pos, seq_length)
     test_data = cut_seq(test_data, start_pos, seq_length)
@@ -38,7 +36,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers):
     srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, False)
     learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE)
 
-    for epoch in range(NB_EPOCHS):
+    for epoch in range(nb_epochs):
         print('\nEpoch:', epoch)
         start = time.time()
         train_loader.reset_batch_pointer()
@@ -72,6 +70,8 @@ if __name__ == '__main__':
                         help='length of sequence')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
+    parser.add_argument('--epochs', type=int, default=NB_EPOCHS,
+                        help='number of epochs to run')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, args.start, args.length, args.layers)
+    main(args.beta, args.rate, args.start, args.length, args.layers, args.epochs)
