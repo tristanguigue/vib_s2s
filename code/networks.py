@@ -87,6 +87,10 @@ class StochasticRNN(StochasticNetwork):
             self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
             self.inputs = tf.expand_dims(tf_binarize(self.x), 2)
 
+        with tf.name_scope('prior'):
+            self.sigma0 = tf.Variable(tf.ones(bottleneck_size), name='prior-variance')
+            self.mu0 = tf.Variable(tf.zeros(bottleneck_size), name='prior-mean')
+
         with tf.name_scope('encoder'):
             out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
             out_biases = self.bias_variable('out_biases', [encoder_output])
