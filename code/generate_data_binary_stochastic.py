@@ -16,7 +16,7 @@ encoder_output = 2 * bottleneck_size
 standard_mu = tf.zeros(bottleneck_size)
 standard_sigma = tf.ones(bottleneck_size)
 multivariate_std = tf.contrib.distributions.MultivariateNormalDiag(standard_mu, standard_sigma)
-beta = 5 * 10**-3
+beta = 10**-3
 
 
 def sigmoid(x):
@@ -150,8 +150,8 @@ for epoch in range(3000):
 
     # batch_xs = samples[:, :15]
     # batch_ys = samples[:, 15:]
-    batch_train = samples[:250, :]
-    batch_test = samples[250:, :]
+    batch_train = samples[:500, :]
+    batch_test = samples[500:, :]
 
     train_accuracy, train_loss, s, kl, ll = sess.run([accuracy, loss_op, sigma, kl_loss, loss], feed_dict={x: batch_train})
     print(np.mean(s), np.mean(kl), np.mean(ll))
