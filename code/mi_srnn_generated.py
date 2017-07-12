@@ -5,6 +5,7 @@ from tools import Batcher
 import argparse
 import time
 import numpy as np
+import tensorflow as tf
 
 DATA_DIR = 'data/generated_samples.npy'
 HIDDEN_SIZE = 128
@@ -14,6 +15,8 @@ BATCH_SIZE = 500
 LEARNING_RATE = 0.0005
 BETA = 0.001
 TRAIN_TEST_SPLIT = 500
+LOGS_PATH = 'logs/'
+CHECKPOINT_PATH = 'checkpoints/'
 
 
 def cut_seq(seq, start_pos, seq_length):
@@ -24,6 +27,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs):
     data = np.load(DATA_DIR)
     train_data = data[:TRAIN_TEST_SPLIT]
     test_data = data[TRAIN_TEST_SPLIT:]
+    run_name = 'srnn_generated_' + str(time.time())
 
     if not seq_length:
         seq_length = train_data.shape[1]
@@ -32,9 +36,10 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs):
     test_data = cut_seq(test_data, start_pos, seq_length)
     train_loader = Batcher(train_data, None, BATCH_SIZE)
     test_loader = Batcher(test_data, None, BATCH_SIZE)
+    best_loss = None
 
     srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, False)
-    learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE)
+    learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
 
     for epoch in range(nb_epochs):
         print('\nEpoch:', epoch)
@@ -44,10 +49,19 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs):
         total_loss = 0
         for i in range(train_loader.num_batches):
             batch_xs, _ = train_loader.next_batch()
-            total_loss += learner.train_network(batch_xs, None, learning_rate)
+            current_loss, lr_summary, loss_summary = learner.train_network(
+                batch_xs, None, learning_rate)
+            total_loss += current_loss
 
-        train_loss, train_accuracy = learner.test_network(train_loader)
-        test_loss, test_accuracy = learner.test_network(test_loader)
+            learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
+            learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
+
+        train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
+        test_loss, test_accuracy = learner.test_network(test_loader, epoch)
+
+        if best_loss is None or test_loss < best_loss:
+            learner.saver.save(learner.sess, CHECKPOINT_PATH + run_name)
+            best_loss = test_loss
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)

@@ -2,9 +2,11 @@ import tensorflow as tf
 from abc import ABC, abstractmethod
 from tools import kl_divergence_with_std, kl_divergence
 
+LOGS_PATH = 'logs/'
+
 
 class Learner(ABC):
-    def __init__(self, network, learning_rate, train_batch):
+    def __init__(self, network, learning_rate, train_batch, run_name):
         self.lr = tf.placeholder(tf.float32)
         self.net = network
         self.learning_rate = learning_rate
@@ -14,8 +16,13 @@ class Learner(ABC):
         with tf.name_scope('train'):
             self.train_step = tf.train.AdamOptimizer(self.lr).minimize(self.loss_op)
 
+        self.lr_summary = tf.summary.scalar('lr_summary', self.lr)
+        self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
+        self.test_loss_summary = tf.summary.scalar('test_loss_summary', self.loss_op)
+
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
+        self.writer = tf.summary.FileWriter(LOGS_PATH + run_name, graph=tf.get_default_graph())
         self.sess.run(tf.global_variables_initializer())
 
     @abstractmethod
@@ -32,11 +39,13 @@ class Learner(ABC):
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
 
-        _, current_loss = self.sess.run([self.train_step, self.loss_op], feed_dict=feed_dict)
+        _, current_loss, lr_summary, train_loss_summary = self.sess.run(
+            [self.train_step, self.loss_op, self.lr_summary, self.train_loss_summary],
+            feed_dict=feed_dict)
 
-        return current_loss
+        return current_loss, lr_summary, train_loss_summary
 
-    def test_network(self, loader):
+    def test_network(self, loader, epoch):
         total_accuracy = 0
         total_loss = 0
         nb_batches = loader.num_batches
@@ -46,9 +55,13 @@ class Learner(ABC):
             feed_dict = {self.net.x: batch_xs}
             if batch_ys is not None:
                 feed_dict.update({self.net.y_true: batch_ys})
-            batch_loss, batch_accuracy = self.sess.run([self.loss_op, self.net.accuracy], feed_dict=feed_dict)
+            batch_loss, batch_accuracy, test_loss_summary = self.sess.run(
+                [self.loss_op, self.net.accuracy, self.test_loss_summary], feed_dict=feed_dict)
             total_accuracy += batch_accuracy
             total_loss += batch_loss
+
+            if epoch:
+                self.writer.add_summary(test_loss_summary, epoch * nb_batches + i)
 
         return total_loss / nb_batches, total_accuracy / nb_batches
 
@@ -88,9 +101,9 @@ class PartialPredictionLossLearner(Learner):
 
 
 class PredictionLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch):
+    def __init__(self, network, beta, learning_rate, train_batch, run_name):
         self.beta = beta
-        super().__init__(network, learning_rate, train_batch)
+        super().__init__(network, learning_rate, train_batch, run_name)
 
     def loss(self):
         true_pixels = self.net.inputs[:, 1:]
