@@ -63,5 +63,20 @@ Normalising flow without score function does not work as proposed $f$ is not dif
 # June 27th
 - Use $h_{t+2} = \phi(W_h h_{t+1} + W_z z + b)$ might have to do in Theano
 
+# July 11th
+- Results for stochastic RNN on binary data:
+beta = 0: 0.448, beta = 10^-2: 0.417
+
+# July 12th 
+- To overfit try patter + noise or regression with cubic term
+- Use GRU instead of LSTM for stability (at least LSTM instead of RNN)
+- Try predict next 15 pixels, do with MNIST (half of image to train)
+- Try concatenating the output of the sequence
+- More data, longer seq size
+- Try again with continuous, for example with cubic pattern from initial point drawn from gaussian and test from initial point far away
+- Use smaller bottleneck!
+
+
+
 
 
