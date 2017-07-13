@@ -5,9 +5,9 @@ from tools import Batcher
 import argparse
 import time
 import numpy as np
-import tensorflow as tf
+import os
 
-DATA_DIR = 'data/generated_samples.npy'
+DATA_DIR = 'data/binary_samples10000.npy'
 HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 128
 NB_EPOCHS = 2000
@@ -15,8 +15,8 @@ BATCH_SIZE = 500
 LEARNING_RATE = 0.0005
 BETA = 0.001
 TRAIN_TEST_SPLIT = 500
-LOGS_PATH = 'logs/'
 CHECKPOINT_PATH = 'checkpoints/'
+DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def cut_seq(seq, start_pos, seq_length):
@@ -24,7 +24,8 @@ def cut_seq(seq, start_pos, seq_length):
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs):
-    data = np.load(DATA_DIR)
+
+    data = np.load(DIR + DATA_DIR)
     train_data = data[:TRAIN_TEST_SPLIT]
     test_data = data[TRAIN_TEST_SPLIT:]
     run_name = 'srnn_generated_' + str(time.time())
@@ -60,7 +61,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs):
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
         if best_loss is None or test_loss < best_loss:
-            learner.saver.save(learner.sess, CHECKPOINT_PATH + run_name)
+            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
             best_loss = test_loss
 
         print('Time: ', time.time() - start)

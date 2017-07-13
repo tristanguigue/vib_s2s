@@ -1,7 +1,9 @@
 import tensorflow as tf
 from abc import ABC, abstractmethod
 from tools import kl_divergence_with_std, kl_divergence
+import os
 
+DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 LOGS_PATH = 'logs/'
 
 
@@ -22,7 +24,7 @@ class Learner(ABC):
 
         self.sess = tf.Session()
         self.saver = tf.train.Saver()
-        self.writer = tf.summary.FileWriter(LOGS_PATH + run_name, graph=tf.get_default_graph())
+        self.writer = tf.summary.FileWriter(DIR + LOGS_PATH + run_name, graph=tf.get_default_graph())
         self.sess.run(tf.global_variables_initializer())
 
     @abstractmethod
