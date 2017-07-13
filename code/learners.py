@@ -5,6 +5,7 @@ import os
 
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 LOGS_PATH = 'logs/'
+GRADIENT_GLOBAL_NORM = 5.0
 
 
 class Learner(ABC):
@@ -17,9 +18,9 @@ class Learner(ABC):
 
         with tf.name_scope('train'):
             optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-            gvs = optimizer.compute_gradients(self.loss_op)
-            capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
-            self.train_step = optimizer.apply_gradients(capped_gvs)
+            gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
+            gradients, _ = tf.clip_by_global_norm(gradients, GRADIENT_GLOBAL_NORM)
+            self.train_step = optimizer.apply_gradients(zip(gradients, variables))
 
         self.lr_summary = tf.summary.scalar('lr_summary', self.lr)
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
