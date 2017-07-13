@@ -5,7 +5,7 @@ def sample_bernouilli(input_values):
     return np.random.binomial(1, p=input_values)
 
 
-SEQ_SIZE = 30
+SEQ_SIZE = 60
 
 samples = []
 for i in range(10000):
@@ -23,4 +23,4 @@ for i in range(10000):
 samples = np.asarray(samples)
 
 print(samples)
-np.save('data/binary_samples10000.npy', samples)
+np.save('data/binary_samples10000_s60.npy', samples)

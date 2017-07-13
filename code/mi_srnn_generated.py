@@ -7,14 +7,14 @@ import time
 import numpy as np
 import os
 
-DATA_DIR = 'data/binary_samples10000.npy'
+DATA_DIR = 'data/binary_samples10000_s60.npy'
 HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 64
 NB_EPOCHS = 2000
 BATCH_SIZE = 500
 LEARNING_RATE = 0.0005
 BETA = 0.001
-TRAIN_TEST_SPLIT = 500
+TRAIN_TEST_SPLIT = 5000
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
