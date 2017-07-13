@@ -16,7 +16,10 @@ class Learner(ABC):
         self.loss_op = self.loss()
 
         with tf.name_scope('train'):
-            self.train_step = tf.train.AdamOptimizer(self.lr).minimize(self.loss_op)
+            optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+            gvs = optimizer.compute_gradients(self.loss_op)
+            capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+            self.train_step = optimizer.apply_gradients(capped_gvs)
 
         self.lr_summary = tf.summary.scalar('lr_summary', self.lr)
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
