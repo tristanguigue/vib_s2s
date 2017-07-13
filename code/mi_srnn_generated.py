@@ -14,7 +14,8 @@ NB_EPOCHS = 2000
 BATCH_SIZE = 1000
 LEARNING_RATE = 0.0005
 BETA = 0.001
-TRAIN_TEST_SPLIT = 5000
+TRAIN_SIZE = 5000
+TEST_SIZE = 5000
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
@@ -23,11 +24,10 @@ def cut_seq(seq, start_pos, seq_length):
     return seq[:, start_pos:start_pos + seq_length]
 
 
-def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs):
-
+def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_size, test_size):
     data = np.load(DIR + DATA_DIR)
-    train_data = data[:TRAIN_TEST_SPLIT]
-    test_data = data[TRAIN_TEST_SPLIT:]
+    train_data = data[:train_size]
+    test_data = data[train_size:train_size + test_size]
     run_name = 'srnn_generated_' + str(time.time())
 
     if not seq_length:
@@ -83,10 +83,15 @@ if __name__ == '__main__':
                         help='start position in sequence')
     parser.add_argument('--length', type=int,
                         help='length of sequence')
+    parser.add_argument('--train', type=int, default=TRAIN_SIZE,
+                        help='train samples')
+    parser.add_argument('--test', type=int, default=TEST_SIZE,
+                        help='test samples')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
     parser.add_argument('--epochs', type=int, default=NB_EPOCHS,
                         help='number of epochs to run')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, args.start, args.length, args.layers, args.epochs)
+    main(args.beta, args.rate, args.start, args.length, args.layers, args.epochs,
+         args.train, args.test)
