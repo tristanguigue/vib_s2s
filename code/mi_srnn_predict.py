@@ -19,7 +19,7 @@ def main():
     learner.saver.restore(learner.sess, DIR + CHECKPOINT_PATH + RUN_NAME)
 
     data = np.load(DIR + DATA_DIR)
-    train_data = data[PREDICT_SAMPLES:]
+    train_data = data[:PREDICT_SAMPLES]
     test_data = data[-PREDICT_SAMPLES:]
     predicted_train_sequences = learner.predict_sequence(train_data)
     predicted_test_sequences = learner.predict_sequence(test_data)
