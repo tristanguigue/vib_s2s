@@ -15,7 +15,7 @@ class Learner(ABC):
         self.learning_rate = learning_rate
         self.train_batch = train_batch
         self.loss_op = self.loss()
-
+        
         with tf.name_scope('train'):
             optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
             gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
@@ -26,7 +26,9 @@ class Learner(ABC):
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
         self.test_loss_summary = tf.summary.scalar('test_loss_summary', self.loss_op)
 
-        self.sess = tf.Session()
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth=True
+        self.sess = tf.Session(config=config)
         self.saver = tf.train.Saver()
         self.writer = tf.summary.FileWriter(DIR + LOGS_PATH + run_name, graph=tf.get_default_graph())
         self.sess.run(tf.global_variables_initializer())
