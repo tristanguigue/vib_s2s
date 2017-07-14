@@ -25,12 +25,12 @@ def main():
     predicted_test_sequences = learner.predict_sequence(test_data)
 
     print('Train data')
-    print(train_data)
+    print(train_data[:, 1:])
     print('Predicted')
     print(predicted_train_sequences)
 
     print('Test data')
-    print(test_data)
+    print(test_data[:, 1:])
     print('Predicted')
     print(predicted_test_sequences)
 
