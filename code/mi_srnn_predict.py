@@ -15,7 +15,7 @@ SEQ_LENGTH = 60
 
 def main(checkpoint):
     srnn = StochasticRNN(SEQ_LENGTH, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, 1, True, True)
-    learner = PredictionLossLearner(srnn, None, None, None, RUN_NAME)
+    learner = PredictionLossLearner(srnn, None, None, None, checkpoint)
     learner.saver.restore(learner.sess, DIR + CHECKPOINT_PATH + checkpoint)
 
     data = np.load(DIR + DATA_DIR)
