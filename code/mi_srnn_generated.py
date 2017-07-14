@@ -28,7 +28,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
     data = np.load(DIR + DATA_DIR)
     train_data = data[:train_size]
     test_data = data[train_size:train_size + test_size]
-    run_name = 'srnn_generated_' + str(time.time())
+    run_name = 'srnn_generated_' + str(int(time.time()))
 
     if not seq_length:
         seq_length = train_data.shape[1]

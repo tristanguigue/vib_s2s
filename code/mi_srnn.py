@@ -9,7 +9,7 @@ import os
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 32
-NB_EPOCHS = 1000
+NB_EPOCHS = 5000
 BATCH_SIZE = 500
 LEARNING_RATE = 0.0005
 BETA = 0.001
@@ -20,7 +20,7 @@ CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
-def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples):
+def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples, epochs):
     mnist = input_data.read_data_sets(DATA_DIR)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
@@ -38,7 +38,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
     learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
     best_loss = None
 
-    for epoch in range(NB_EPOCHS):
+    for epoch in range(epochs):
         print('\nEpoch:', epoch)
         start = time.time()
         train_loader.reset_batch_pointer()
@@ -85,6 +85,9 @@ if __name__ == '__main__':
                         help='train samples')
     parser.add_argument('--test', type=int, default=TEST_SIZE,
                         help='test samples')
+    parser.add_argument('--epochs', type=int, default=NB_EPOCHS,
+                        help='number of epochs to run')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test)
+    main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test,
+         args.epochs)
