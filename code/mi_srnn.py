@@ -4,36 +4,39 @@ from learners import PredictionLossLearner
 from tools import Batcher
 import argparse
 import time
+import os
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 32
 NB_EPOCHS = 1000
 BATCH_SIZE = 500
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0005
 BETA = 0.001
-LEARNING_RATE_INCREASE_DELTA = 10
-LABEL_SELECTED = 6
+LABEL_SELECTED = 1
+TRAIN_SIZE = 500
+TEST_SIZE = 500
+CHECKPOINT_PATH = 'checkpoints/'
+DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
-def cut_seq(seq, start_pos, seq_length):
-    return seq[:, start_pos:start_pos + seq_length]
-
-
-def main(beta, learning_rate, start_pos, seq_length, layers):
+def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples):
     mnist = input_data.read_data_sets(DATA_DIR)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
+    run_name = 'srnn_mnist_' + str(int(time.time()))
 
-    train_data = cut_seq(mnist.train.images[mnist.train.labels == LABEL_SELECTED], start_pos, seq_length)
-    test_data = cut_seq(mnist.test.images[mnist.test.labels == LABEL_SELECTED], start_pos, seq_length)
+    train_data = mnist.train.images[mnist.train.labels == LABEL_SELECTED]
+    test_data = mnist.test.images[mnist.test.labels == LABEL_SELECTED]
+    train_data = train_data[:train_samples, start_pos:start_pos + seq_length]
+    test_data = test_data[:test_samples, start_pos:start_pos + seq_length]
+
     train_loader = Batcher(train_data, None, BATCH_SIZE)
     test_loader = Batcher(test_data, None, BATCH_SIZE)
 
-    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True)
-    learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE)
-    former_loss = None
-    last_update = 0
+    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, True)
+    learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
+    best_loss = None
 
     for epoch in range(NB_EPOCHS):
         print('\nEpoch:', epoch)
@@ -43,17 +46,19 @@ def main(beta, learning_rate, start_pos, seq_length, layers):
         total_loss = 0
         for i in range(train_loader.num_batches):
             batch_xs, _ = train_loader.next_batch()
-            total_loss += learner.train_network(batch_xs, None, learning_rate)
+            current_loss, lr_summary, loss_summary = learner.train_network(
+                batch_xs, None, learning_rate)
+            total_loss += current_loss
 
-        if former_loss is not None and total_loss >= former_loss:
-            learning_rate /= 2
-        elif epoch - last_update > LEARNING_RATE_INCREASE_DELTA:
-            learning_rate *= 2
-            last_update = epoch
-        former_loss = total_loss
+            learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
+            learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
-        train_loss, train_accuracy = learner.test_network(train_loader)
-        test_loss, test_accuracy = learner.test_network(test_loader)
+        train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
+        test_loss, test_accuracy = learner.test_network(test_loader, epoch)
+
+        if best_loss is None or test_loss < best_loss:
+            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+            best_loss = test_loss
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
@@ -76,6 +81,10 @@ if __name__ == '__main__':
                         help='length of sequence')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
+    parser.add_argument('--train', type=int, default=TRAIN_SIZE,
+                        help='train samples')
+    parser.add_argument('--test', type=int, default=TEST_SIZE,
+                        help='test samples')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, args.start, args.length, args.layers)
+    main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test)
