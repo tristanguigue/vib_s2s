@@ -9,9 +9,9 @@ import os
 
 DATA_DIR = 'data/binary_samples10000_s60.npy'
 HIDDEN_SIZE = 128
-BOTTLENECK_SIZE = 64
+BOTTLENECK_SIZE = 32
 NB_EPOCHS = 2000
-BATCH_SIZE = 1000
+BATCH_SIZE = 500
 LEARNING_RATE = 0.0005
 BETA = 0.001
 TRAIN_SIZE = 5000
@@ -40,7 +40,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
     best_loss = None
     best_train_loss = None
 
-    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, False)
+    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, True)
     learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
 
     for epoch in range(nb_epochs):
