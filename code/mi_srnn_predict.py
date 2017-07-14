@@ -1,4 +1,5 @@
 import os
+import argparse
 import numpy as np
 from networks import StochasticRNN
 from learners import PredictionLossLearner
@@ -8,15 +9,14 @@ HIDDEN_SIZE = 128
 BOTTLENECK_SIZE = 32
 PREDICT_SAMPLES = 5
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
-RUN_NAME = 'srnn_generated_1500028572.738754'
 CHECKPOINT_PATH = 'checkpoints/'
 SEQ_LENGTH = 60
 
 
-def main():
+def main(checkpoint):
     srnn = StochasticRNN(SEQ_LENGTH, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, 1, True, True)
     learner = PredictionLossLearner(srnn, None, None, None, RUN_NAME)
-    learner.saver.restore(learner.sess, DIR + CHECKPOINT_PATH + RUN_NAME)
+    learner.saver.restore(learner.sess, DIR + CHECKPOINT_PATH + checkpoint)
 
     data = np.load(DIR + DATA_DIR)
     train_data = data[:PREDICT_SAMPLES]
@@ -33,6 +33,14 @@ def main():
     print(test_data[:, 1:])
     print('Predicted')
     print(predicted_test_sequences)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--checkpoint', type=str,
+                        help='the checkpoint to load')
+
+    args = parser.parse_args()
+    main(args.checkpoint)
 
 if __name__ == '__main__':
     main()
