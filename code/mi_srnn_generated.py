@@ -38,6 +38,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
     train_loader = Batcher(train_data, None, BATCH_SIZE)
     test_loader = Batcher(test_data, None, BATCH_SIZE)
     best_loss = None
+    best_train_loss = None
 
     srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, False)
     learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
@@ -63,6 +64,10 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
         if best_loss is None or test_loss < best_loss:
             learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
             best_loss = test_loss
+
+        if best_train_loss is None or train_loss < best_train_loss:
+            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + 'train_' + run_name)
+            best_train_loss = train_loss
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
