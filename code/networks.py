@@ -99,9 +99,10 @@ class StochasticRNN(StochasticNetwork):
             decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
             decoder_biases = self.bias_variable('decoder_biases', [output_size])
 
-        outputs, state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
-        flat_outputs = tf.reshape(outputs, [-1, hidden_size])
+        with tf.variable_scope('rnn'):
+            outputs, state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
 
+        flat_outputs = tf.reshape(outputs, [-1, hidden_size])
         encoder_output = tf.matmul(flat_outputs, out_weights) + out_biases
 
         self.mu = encoder_output[:, :bottleneck_size]
@@ -116,6 +117,16 @@ class StochasticRNN(StochasticNetwork):
         predicted_pixels = tf.round(tf.sigmoid(self.decoder_output[:, :-1]))
         accurate_predictions = tf.equal(predicted_pixels, true_pixels)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+
+        with tf.variable_scope('rnn', reuse=True):
+            pred_outputs, pred_state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
+            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
+            encoder_pred_output = tf.matmul(flat_pred_outputs, out_weights) + out_biases
+            mu = encoder_pred_output[:, :bottleneck_size]
+            decoder_pred_output = tf.matmul(mu, decoder_weights) + decoder_biases
+            decoder_pred_output = tf.reshape(decoder_pred_output, [-1, seq_size, output_size])
+            self.predicted_sequence = tf.squeeze(tf.cast(
+                tf.round(tf.sigmoid(self.decoder_output[:, :-1])), tf.int32))
 
 
 class Seq2Seq(StochasticNetwork):
