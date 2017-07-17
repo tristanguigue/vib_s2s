@@ -104,4 +104,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test,
-         args.epochs, args.hidden, args.bottleneck, args.label, args.batch)
+         args.epochs, args.hidden, args.bottleneck, args.label, args.batch, args.lstm)
