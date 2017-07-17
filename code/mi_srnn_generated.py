@@ -1,4 +1,3 @@
-from tensorflow.examples.tutorials.mnist import input_data
 from networks import StochasticRNN
 from learners import PredictionLossLearner
 from tools import Batcher
@@ -24,7 +23,8 @@ def cut_seq(seq, start_pos, seq_length):
     return seq[:, start_pos:start_pos + seq_length]
 
 
-def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_size, test_size):
+def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_size, test_size,
+         hidden_units, bottleneck_size):
     data = np.load(DIR + DATA_DIR)
     train_data = data[:train_size]
     test_data = data[train_size:train_size + test_size]
@@ -40,7 +40,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
     best_loss = None
     best_train_loss = None
 
-    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, True)
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, True)
     learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
 
     for epoch in range(nb_epochs):
@@ -96,7 +96,11 @@ if __name__ == '__main__':
                         help='number of rnn layers')
     parser.add_argument('--epochs', type=int, default=NB_EPOCHS,
                         help='number of epochs to run')
+    parser.add_argument('--hidden', type=int, default=HIDDEN_SIZE,
+                        help='hidden units')
+    parser.add_argument('--bottleneck', type=int, default=BOTTLENECK_SIZE,
+                        help='bottleneck size')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.epochs,
-         args.train, args.test)
+         args.train, args.test, args.hidden, args.bottleneck)

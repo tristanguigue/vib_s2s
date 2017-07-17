@@ -13,28 +13,31 @@ NB_EPOCHS = 5000
 BATCH_SIZE = 500
 LEARNING_RATE = 0.0005
 BETA = 0.001
-LABEL_SELECTED = 1
 TRAIN_SIZE = 500
 TEST_SIZE = 500
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
-def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples, epochs):
+def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples, epochs,
+         hidden_units, bottleneck_size, label_selected):
     mnist = input_data.read_data_sets(DATA_DIR)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
     run_name = 'srnn_mnist_' + str(int(time.time()))
 
-    train_data = mnist.train.images[mnist.train.labels == LABEL_SELECTED]
-    test_data = mnist.test.images[mnist.test.labels == LABEL_SELECTED]
+    train_data = mnist.train.images
+    test_data = mnist.test.images
+    if label_selected:
+        train_data = mnist.train.images[mnist.train.labels == label_selected]
+        test_data = mnist.test.images[mnist.test.labels == label_selected]
     train_data = train_data[:train_samples, start_pos:start_pos + seq_length]
     test_data = test_data[:test_samples, start_pos:start_pos + seq_length]
 
     train_loader = Batcher(train_data, None, BATCH_SIZE)
     test_loader = Batcher(test_data, None, BATCH_SIZE)
 
-    srnn = StochasticRNN(seq_length, HIDDEN_SIZE, BOTTLENECK_SIZE, 1, layers, True, True)
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, True)
     learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
     best_loss = None
 
@@ -87,7 +90,16 @@ if __name__ == '__main__':
                         help='test samples')
     parser.add_argument('--epochs', type=int, default=NB_EPOCHS,
                         help='number of epochs to run')
+    parser.add_argument('--hidden', type=int, default=HIDDEN_SIZE,
+                        help='hidden units')
+    parser.add_argument('--bottleneck', type=int, default=BOTTLENECK_SIZE,
+                        help='bottleneck size')
+    parser.add_argument('--label', type=int,
+                        help='label of images selected')
+    parser.add_argument('--batch', type=int, default=BATCH_SIZE,
+                        help='batch size')
+
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test,
-         args.epochs)
+         args.epochs, args.hidden, args.bottleneck, args.label, args.batch)
