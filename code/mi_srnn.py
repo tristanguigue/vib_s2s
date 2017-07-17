@@ -15,12 +15,13 @@ LEARNING_RATE = 0.0005
 BETA = 0.001
 TRAIN_SIZE = 500
 TEST_SIZE = 500
+LSTM_CELL = 1
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples, epochs,
-         hidden_units, bottleneck_size, label_selected, batch_size):
+         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell):
     mnist = input_data.read_data_sets(DATA_DIR)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
@@ -37,7 +38,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
 
-    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, True)
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, bool(lstm_cell))
     learner = PredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name)
     best_loss = None
 
@@ -98,6 +99,8 @@ if __name__ == '__main__':
                         help='label of images selected')
     parser.add_argument('--batch', type=int, default=BATCH_SIZE,
                         help='batch size')
+    parser.add_argument('--lstm', type=int, default=LSTM_CELL,
+                        help='is lstm cell')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test,
