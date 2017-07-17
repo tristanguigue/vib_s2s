@@ -20,7 +20,7 @@ DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples, epochs,
-         hidden_units, bottleneck_size, label_selected):
+         hidden_units, bottleneck_size, label_selected, batch_size):
     mnist = input_data.read_data_sets(DATA_DIR)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
@@ -34,11 +34,11 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
     train_data = train_data[:train_samples, start_pos:start_pos + seq_length]
     test_data = test_data[:test_samples, start_pos:start_pos + seq_length]
 
-    train_loader = Batcher(train_data, None, BATCH_SIZE)
-    test_loader = Batcher(test_data, None, BATCH_SIZE)
+    train_loader = Batcher(train_data, None, batch_size)
+    test_loader = Batcher(test_data, None, batch_size)
 
     srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, True)
-    learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
+    learner = PredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name)
     best_loss = None
 
     for epoch in range(epochs):
@@ -98,7 +98,6 @@ if __name__ == '__main__':
                         help='label of images selected')
     parser.add_argument('--batch', type=int, default=BATCH_SIZE,
                         help='batch size')
-
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test,
