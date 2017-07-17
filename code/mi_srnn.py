@@ -7,15 +7,6 @@ import time
 import os
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
-HIDDEN_SIZE = 128
-BOTTLENECK_SIZE = 32
-NB_EPOCHS = 5000
-BATCH_SIZE = 500
-LEARNING_RATE = 0.0005
-BETA = 0.001
-TRAIN_SIZE = 500
-TEST_SIZE = 500
-LSTM_CELL = 1
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
@@ -75,9 +66,9 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--beta', type=float, default=BETA,
+    parser.add_argument('--beta', type=float, default=0.001,
                         help='the value of beta, mutual information regulariser')
-    parser.add_argument('--rate', type=float, default=LEARNING_RATE,
+    parser.add_argument('--rate', type=float, default=0.0005,
                         help='the learning rate for the Adam optimiser')
     parser.add_argument('--start', type=int, default=0,
                         help='start position in sequence')
@@ -85,21 +76,21 @@ if __name__ == '__main__':
                         help='length of sequence')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
-    parser.add_argument('--train', type=int, default=TRAIN_SIZE,
+    parser.add_argument('--train', type=int, default=500,
                         help='train samples')
-    parser.add_argument('--test', type=int, default=TEST_SIZE,
+    parser.add_argument('--test', type=int, default=500,
                         help='test samples')
-    parser.add_argument('--epochs', type=int, default=NB_EPOCHS,
+    parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')
-    parser.add_argument('--hidden', type=int, default=HIDDEN_SIZE,
+    parser.add_argument('--hidden', type=int, default=128,
                         help='hidden units')
-    parser.add_argument('--bottleneck', type=int, default=BOTTLENECK_SIZE,
+    parser.add_argument('--bottleneck', type=int, default=32,
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
                         help='label of images selected')
-    parser.add_argument('--batch', type=int, default=BATCH_SIZE,
+    parser.add_argument('--batch', type=int, default=500,
                         help='batch size')
-    parser.add_argument('--lstm', type=int, default=LSTM_CELL,
+    parser.add_argument('--lstm', type=int, default=1,
                         help='is lstm cell')
 
     args = parser.parse_args()
