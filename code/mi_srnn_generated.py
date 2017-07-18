@@ -7,14 +7,6 @@ import numpy as np
 import os
 
 DATA_DIR = 'data/binary_samples10000_s60.npy'
-HIDDEN_SIZE = 128
-BOTTLENECK_SIZE = 32
-NB_EPOCHS = 2000
-BATCH_SIZE = 500
-LEARNING_RATE = 0.0005
-BETA = 0.001
-TRAIN_SIZE = 5000
-TEST_SIZE = 5000
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
@@ -24,7 +16,7 @@ def cut_seq(seq, start_pos, seq_length):
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_size, test_size,
-         hidden_units, bottleneck_size):
+         hidden_units, bottleneck_size, batch_size, lstm_cell):
     data = np.load(DIR + DATA_DIR)
     train_data = data[:train_size]
     test_data = data[train_size:train_size + test_size]
@@ -35,13 +27,13 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
 
     train_data = cut_seq(train_data, start_pos, seq_length)
     test_data = cut_seq(test_data, start_pos, seq_length)
-    train_loader = Batcher(train_data, None, BATCH_SIZE)
-    test_loader = Batcher(test_data, None, BATCH_SIZE)
+    train_loader = Batcher(train_data, None, batch_size)
+    test_loader = Batcher(test_data, None, batch_size)
     best_loss = None
     best_train_loss = None
 
-    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, True)
-    learner = PredictionLossLearner(srnn, beta, learning_rate, BATCH_SIZE, run_name)
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, bool(lstm_cell))
+    learner = PredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name)
 
     for epoch in range(nb_epochs):
         print('\nEpoch:', epoch)
@@ -80,27 +72,31 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--beta', type=float, default=BETA,
+    parser.add_argument('--beta', type=float, default=0.001,
                         help='the value of beta, mutual information regulariser')
-    parser.add_argument('--rate', type=float, default=LEARNING_RATE,
+    parser.add_argument('--rate', type=float, default=0.0005,
                         help='the learning rate for the Adam optimiser')
     parser.add_argument('--start', type=int, default=0,
                         help='start position in sequence')
     parser.add_argument('--length', type=int,
                         help='length of sequence')
-    parser.add_argument('--train', type=int, default=TRAIN_SIZE,
+    parser.add_argument('--train', type=int, default=500,
                         help='train samples')
-    parser.add_argument('--test', type=int, default=TEST_SIZE,
+    parser.add_argument('--test', type=int, default=500,
                         help='test samples')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
-    parser.add_argument('--epochs', type=int, default=NB_EPOCHS,
+    parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')
-    parser.add_argument('--hidden', type=int, default=HIDDEN_SIZE,
+    parser.add_argument('--hidden', type=int, default=128,
                         help='hidden units')
-    parser.add_argument('--bottleneck', type=int, default=BOTTLENECK_SIZE,
+    parser.add_argument('--bottleneck', type=int, default=32,
                         help='bottleneck size')
+    parser.add_argument('--batch', type=int, default=500,
+                        help='batch size')
+    parser.add_argument('--lstm', type=int, default=1,
+                        help='is lstm cell')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.epochs,
-         args.train, args.test, args.hidden, args.bottleneck)
+         args.train, args.test, args.hidden, args.bottleneck, args.batch, args.lstm)
