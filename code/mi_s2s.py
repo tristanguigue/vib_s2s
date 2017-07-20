@@ -44,8 +44,8 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
             learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
-        train_loss, train_accuracy = learner.test_network(train_loader)
-        test_loss, test_accuracy = learner.test_network(test_loader)
+        train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
+        test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
         if best_loss is None or test_loss < best_loss:
             learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
