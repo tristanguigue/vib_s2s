@@ -6,40 +6,50 @@ import argparse
 import time
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
-HIDDEN_SIZE = 1024
-BOTTLENECK_SIZE = 256
-NB_EPOCHS = 500
-BATCH_SIZE = 200
-LEARNING_RATE = 0.001
-BETA = 0.001
-OUTPUT_SEQ_SIZE = 100
-OUTPUT_SIZE = 1
 
 
-def main(beta, learning_rate, layers):
+def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
+         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, output_seq_size):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     seq_size = mnist.train.images.shape[1]
     partial_sequence_size = int(2 * seq_size / 3)
+    run_name = 's2s_mnist_' + str(int(time.time()))
 
-    train_loader = Batcher(mnist.train.images, None, BATCH_SIZE)
-    test_loader = Batcher(mnist.test.images, None, BATCH_SIZE)
+    train_data = mnist.train.images
+    test_data = mnist.test.images
+    if label_selected:
+        train_data = mnist.train.images[mnist.train.labels == label_selected]
+        test_data = mnist.test.images[mnist.test.labels == label_selected]
+    train_data = train_data[:train_samples, :]
+    test_data = test_data[:test_samples, :]
 
-    seq2seq = Seq2Seq(seq_size, partial_sequence_size, OUTPUT_SEQ_SIZE, HIDDEN_SIZE,
-                      BOTTLENECK_SIZE, OUTPUT_SIZE, layers, True)
-    learner = PartialPredictionLossLearner(seq2seq, beta, learning_rate, BATCH_SIZE)
-    epoch_batches = int(mnist.train.num_examples / BATCH_SIZE)
+    train_loader = Batcher(train_data, None, batch_size)
+    test_loader = Batcher(test_data, None, batch_size)
+    seq2seq = Seq2Seq(seq_size, partial_sequence_size, output_seq_size, hidden_units,
+                      bottleneck_size, 1, layers, True)
+    learner = PartialPredictionLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
+    epoch_batches = int(mnist.train.num_examples / batch_size)
+    best_loss = None
 
-    for epoch in range(NB_EPOCHS):
+    for epoch in range(epochs):
         print('\nEpoch:', epoch)
         start = time.time()
 
         total_loss = 0
         for i in range(epoch_batches):
-            batch_xs, _ = mnist.train.next_batch(BATCH_SIZE)
-            total_loss += learner.train_network(batch_xs, None, LEARNING_RATE)
+            batch_xs, _ = mnist.train.next_batch(batch_size)
+            current_loss, lr_summary, loss_summary = learner.train_network(batch_xs, None, learning_rate)
+            total_loss += current_loss
 
-        train_accuracy = learner.test_network(train_loader)
-        test_accuracy = learner.test_network(test_loader)
+            learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
+            learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
+
+        train_loss, train_accuracy = learner.test_network(train_loader)
+        test_loss, test_accuracy = learner.test_network(test_loader)
+
+        if best_loss is None or test_loss < best_loss:
+            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+            best_loss = test_loss
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / epoch_batches)
@@ -50,14 +60,31 @@ def main(beta, learning_rate, layers):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--beta', metavar='int', type=float, const=BETA, nargs='?', default=BETA,
-        help='the value of beta, mutual information regulariser')
-    parser.add_argument(
-        '--rate', metavar='int', type=float, const=LEARNING_RATE, nargs='?', default=LEARNING_RATE,
-        help='the learning rate for the Adam optimiser')
+    parser.add_argument('--beta', type=float, default=0.001,
+                        help='the value of beta, mutual information regulariser')
+    parser.add_argument('--rate', type=float, default=0.0005,
+                        help='the learning rate for the Adam optimiser')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
+    parser.add_argument('--train', type=int, default=500,
+                        help='train samples')
+    parser.add_argument('--test', type=int, default=500,
+                        help='test samples')
+    parser.add_argument('--epochs', type=int, default=5000,
+                        help='number of epochs to run')
+    parser.add_argument('--hidden', type=int, default=128,
+                        help='hidden units')
+    parser.add_argument('--bottleneck', type=int, default=64,
+                        help='bottleneck size')
+    parser.add_argument('--label', type=int,
+                        help='label of images selected')
+    parser.add_argument('--batch', type=int, default=500,
+                        help='batch size')
+    parser.add_argument('--lstm', type=int, default=1,
+                        help='is lstm cell')
+    parser.add_argument('--output_seq_size', type=int, default=15,
+                        help='output sequence size')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, args.layers)
+    main(args.beta, args.rate, args.layers, args.train, args.test, args.epochs,
+         args.hidden, args.bottleneck, args.label, args.batch, args.lstm, args.output_seq_size)
