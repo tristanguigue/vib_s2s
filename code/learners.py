@@ -15,7 +15,7 @@ class Learner(ABC):
         self.learning_rate = learning_rate
         self.train_batch = train_batch
         self.loss_op = self.loss()
-        
+
         with tf.name_scope('train'):
             optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
             gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
@@ -99,9 +99,9 @@ class SupervisedLossLearner(Learner):
 
 
 class PartialPredictionLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch):
+    def __init__(self, network, beta, learning_rate, train_batch, run_name):
         self.beta = beta
-        super().__init__(network, learning_rate, train_batch)
+        super().__init__(network, learning_rate, train_batch, run_name)
 
     def loss(self):
         cross_entropy = self.net.pred_x_entropy
