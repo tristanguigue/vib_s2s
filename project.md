@@ -68,7 +68,7 @@ Normalising flow without score function does not work as proposed $f$ is not dif
 beta = 0: 0.448, beta = 10^-2: 0.417
 
 # July 12th 
-- To overfit try patter + noise or regression with cubic term
+- To overfit try pattern + noise or regression with cubic term
 - Use GRU instead of LSTM for stability (at least LSTM instead of RNN)
 - Try predict next 15 pixels, do with MNIST (half of image to train)
 - Try concatenating the output of the sequence
