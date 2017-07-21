@@ -31,17 +31,18 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
     seq2seq = Seq2Seq(seq_size, partial_sequence_size, output_seq_size, hidden_units,
                       bottleneck_size, 1, layers, True)
     learner = PartialPredictionLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
-    epoch_batches = int(mnist.train.num_examples / batch_size)
     best_loss = None
 
     for epoch in range(epochs):
         print('\nEpoch:', epoch)
         start = time.time()
+        train_loader.reset_batch_pointer()
 
         total_loss = 0
-        for i in range(epoch_batches):
-            batch_xs, _ = mnist.train.next_batch(batch_size)
-            current_loss, lr_summary, loss_summary = learner.train_network(batch_xs, None, learning_rate)
+        for i in range(train_loader.num_batches):
+            batch_xs, _ = train_loader.next_batch()
+            current_loss, lr_summary, loss_summary = learner.train_network(
+                batch_xs, None, learning_rate)
             total_loss += current_loss
 
             learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
@@ -55,8 +56,9 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
             best_loss = test_loss
 
         print('Time: ', time.time() - start)
-        print('Loss: ', total_loss / epoch_batches)
+        print('Loss: ', total_loss / train_loader.num_batches)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
+        print('Train loss: ', train_loss, ', test loss: ', test_loss)
 
     learner.sess.close()
 
