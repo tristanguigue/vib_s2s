@@ -182,7 +182,8 @@ class Seq2Seq(StochasticNetwork):
                 for l in range(layers)])
 
         with tf.variable_scope('rnn_decoder'):
-            true_pixels = self.inputs[:, self.partial_seq_size:self.partial_seq_size + self.output_seq_size]
+            true_pixels = self.inputs[:, self.partial_seq_size + 1:
+                                      self.partial_seq_size + 1 + self.output_seq_size]
 
             # Get first prediction
             pred_pixels = tf.round(tf.sigmoid(pred_logits))
@@ -200,12 +201,12 @@ class Seq2Seq(StochasticNetwork):
         pred_sequence = []
         with tf.variable_scope('rnn_decoder', reuse=True):
             # Loop to predict all the next pixels
-            for i in range(output_seq_size - 1):
+            for i in range(output_seq_size):
                 pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
                 pred_pixels = tf.arg_max(pred_logits, 1)
                 pred_logits = tf.squeeze(pred_logits)
                 self.pred_x_entropy += tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-                    logits=pred_logits, labels=tf.squeeze(true_pixels[:, i + 1])))
+                    logits=pred_logits, labels=tf.squeeze(true_pixels[:, i])))
 
                 pred_pixels = tf.cast(tf.reshape(pred_pixels, [-1, 1, 1]), tf.float32)
 
