@@ -57,7 +57,6 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
-        print('Learning rate: ', learning_rate)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
         print('Train loss: ', train_loss, ', test loss: ', test_loss)
 

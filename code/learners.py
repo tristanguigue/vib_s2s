@@ -105,10 +105,15 @@ class PartialPredictionLossLearner(Learner):
 
     def loss(self):
         cross_entropy = self.net.pred_x_entropy
-        kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
+
+        if self.net.update_prior:
+            kl_loss = kl_divergence(
+                self.net.mu, self.net.sigma, self.net.mu0, self.net.sigma0)
+        else:
+            kl_loss = kl_divergence_with_std(self.net.mu, self.net.sigma)
 
         if self.beta:
-            return tf.reduce_mean(cross_entropy + self.beta * kl)
+            return tf.reduce_mean(cross_entropy + self.beta * kl_loss)
         return tf.reduce_mean(cross_entropy)
 
 
