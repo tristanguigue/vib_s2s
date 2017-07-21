@@ -4,8 +4,11 @@ from learners import PartialPredictionLossLearner
 from tools import Batcher
 import argparse
 import time
+import os
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
+CHECKPOINT_PATH = 'checkpoints/'
+DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
