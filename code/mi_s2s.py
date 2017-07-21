@@ -9,7 +9,8 @@ import os
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
-
+SAMPLE_EVERY = 200
+NB_SAMPLES = 4
 
 def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
          hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, output_seq_size):
@@ -54,6 +55,12 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
         if best_loss is None or test_loss < best_loss:
             learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
             best_loss = test_loss
+
+        if not epoch % SAMPLE_EVERY:
+            train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
+            test_samples = learner.sample_sequence(test_data[:NB_SAMPLES])
+            print(train_samples)
+            print(test_samples)
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)

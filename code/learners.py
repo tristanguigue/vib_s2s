@@ -77,6 +77,10 @@ class Learner(ABC):
         return self.sess.run(
             self.net.predicted_sequence, feed_dict={self.net.x: batch_xs})
 
+    def sample_sequence(self, batch_xs):
+        return self.sess.run(
+            self.net.sampled_sequence, feed_dict={self.net.x: batch_xs})
+
 
 class SupervisedLossLearner(Learner):
     def __init__(self, network, beta, learning_rate, train_batch):
