@@ -197,20 +197,18 @@ class Seq2Seq(StochasticNetwork):
             # Loop to predict all the next pixels
             for i in range(output_seq_size):
                 pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
-                pred_pixels = tf.arg_max(pred_logits, 1)
+                pred_pixels = tf.cast(tf.arg_max(pred_logits, 1), tf.float32)
                 pred_logits = tf.squeeze(pred_logits)
                 self.pred_x_entropy += tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
                     logits=pred_logits, labels=tf.squeeze(true_pixels[:, i])))
-
-                pred_pixels = tf.cast(tf.reshape(pred_pixels, [-1, 1, 1]), tf.float32)
-                pred_sequence.append(tf.squeeze(pred_pixels))
+                pred_sequence.append(pred_pixels)
 
                 pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                    stack_decoder, pred_pixels, initial_state=pred_rnn_state, dtype=tf.float32)
+                    stack_decoder, tf.reshape(pred_pixels, [-1, 1, 1]), initial_state=pred_rnn_state,
+                    dtype=tf.float32)
 
-        true_pixels = tf.reshape(true_pixels, [-1, output_seq_size])
-        pred_sequence = tf.reshape(tf.stack(pred_sequence), [-1, output_seq_size])
-        accurate_predictions = tf.equal(pred_sequence, true_pixels)
+        pred_sequence = tf.transpose(tf.stack(pred_sequence))
+        accurate_predictions = tf.equal(pred_sequence, tf.squeeze(true_pixels))
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 
