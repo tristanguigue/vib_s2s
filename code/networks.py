@@ -152,7 +152,8 @@ class Seq2Seq(StochasticNetwork):
         with tf.name_scope('decoder'):
             decoder_weights = self.weight_variable(
                 'decoder_weights', [bottleneck_size, self.output_size + 2 * hidden_size * layers])
-            decoder_biases = self.bias_variable('decoder_biases', [self.output_size])
+            decoder_biases = self.bias_variable(
+                'decoder_biases', [self.output_size + 2 * hidden_size * layers])
 
         with tf.name_scope('rnn_output'):
             rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size, output_size])
@@ -172,6 +173,9 @@ class Seq2Seq(StochasticNetwork):
 
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
         pred_logits = decoder_output[:, :output_size]
+        pred_pixels = tf.round(tf.sigmoid(pred_logits))
+        pred_sequence = [pred_pixels]
+
         new_state = decoder_output[:, output_size:]
         new_state = tf.reshape(new_state, [layers, 2, -1, hidden_size])
         new_state = tf.unstack(new_state)
@@ -180,9 +184,6 @@ class Seq2Seq(StochasticNetwork):
                 for l in range(layers)])
 
         with tf.variable_scope('rnn', reuse=True):
-            # Get first prediction
-            pred_pixels = tf.round(tf.sigmoid(pred_logits))
-
             # Get first cross entropies
             self.pred_x_entropy = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
                 logits=pred_logits, labels=tf.squeeze(true_pixels[:, 0])))
@@ -193,14 +194,12 @@ class Seq2Seq(StochasticNetwork):
                 stack_decoder, tf.cast(pred_pixels, tf.float32),
                 initial_state=pred_rnn_state, dtype=tf.float32)
 
-            pred_sequence = []
             # Loop to predict all the next pixels
-            for i in range(output_seq_size):
+            for i in range(output_seq_size - 1):
                 pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
-                pred_pixels = tf.cast(tf.arg_max(pred_logits, 1), tf.float32)
-                pred_logits = tf.squeeze(pred_logits)
+                pred_pixels = tf.round(tf.sigmoid(pred_logits))
                 self.pred_x_entropy += tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-                    logits=pred_logits, labels=tf.squeeze(true_pixels[:, i])))
+                    logits=tf.squeeze(pred_logits), labels=tf.squeeze(true_pixels[:, i + 1])))
                 pred_sequence.append(pred_pixels)
 
                 pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
