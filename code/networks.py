@@ -133,9 +133,7 @@ class Seq2Seq(StochasticNetwork):
         self.output_seq_size = output_seq_size
         self.output_size = output_size
 
-        stack_encoder = tf.contrib.rnn.MultiRNNCell(
-            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
-        stack_decoder = tf.contrib.rnn.MultiRNNCell(
+        stack = tf.contrib.rnn.MultiRNNCell(
             [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
         encoder_output = 2 * bottleneck_size
 
@@ -161,7 +159,7 @@ class Seq2Seq(StochasticNetwork):
 
         with tf.variable_scope('rnn'):
             outputs, state = tf.nn.dynamic_rnn(
-                stack_encoder, self.inputs[:, :self.partial_seq_size], dtype=tf.float32)
+                stack, self.inputs[:, :self.partial_seq_size], dtype=tf.float32)
 
         encoder_output = tf.matmul(outputs[:, -1], out_weights) + out_biases
 
@@ -191,7 +189,7 @@ class Seq2Seq(StochasticNetwork):
 
             pred_pixels = tf.reshape(pred_pixels, [-1, 1, 1])
             pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                stack_decoder, tf.cast(pred_pixels, tf.float32),
+                stack, tf.cast(pred_pixels, tf.float32),
                 initial_state=pred_rnn_state, dtype=tf.float32)
 
             # Loop to predict all the next pixels
@@ -203,7 +201,7 @@ class Seq2Seq(StochasticNetwork):
                 pred_sequence.append(pred_pixels)
 
                 pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                    stack_decoder, tf.reshape(pred_pixels, [-1, 1, 1]), initial_state=pred_rnn_state,
+                    stack, tf.reshape(pred_pixels, [-1, 1, 1]), initial_state=pred_rnn_state,
                     dtype=tf.float32)
 
         pred_sequence = tf.transpose(tf.stack(pred_sequence))
