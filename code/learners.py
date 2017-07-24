@@ -27,7 +27,7 @@ class Learner(ABC):
         self.test_loss_summary = tf.summary.scalar('test_loss_summary', self.loss_op)
 
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth=True
+        config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         self.saver = tf.train.Saver()
         self.writer = tf.summary.FileWriter(DIR + LOGS_PATH + run_name, graph=tf.get_default_graph())
@@ -141,6 +141,27 @@ class PredictionLossLearner(Learner):
             kl = tf.reshape(kl, [-1, self.net.seq_size, self.net.output_size])
             return tf.reduce_mean(cross_entropy + self.beta * kl[:, :-1])
         return tf.reduce_mean(cross_entropy)
+
+
+class LinearPredictionLossLearner(Learner):
+    def __init__(self, network, beta, learning_rate, train_batch, run_name):
+        self.beta = beta
+        super().__init__(network, learning_rate, train_batch, run_name)
+
+    def loss(self):
+        loss = tf.square(tf.norm(self.net.inputs[:, 1:] - self.net.decoder_output[:, :-1], axis=1))
+        if self.beta:
+            if self.net.update_prior:
+                kl = kl_divergence(
+                    self.net.mu, self.net.sigma, self.net.mu0, self.net.sigma0)
+            else:
+                kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
+
+            kl = tf.reshape(kl, [-1, self.net.seq_size])
+            kl = tf.reduce_sum(kl[:, :-1], axis=1)
+            return tf.reduce_mean(loss + self.beta * kl)
+
+        return tf.reduce_mean(loss)
 
 
 class CharPredictionLossLearner(Learner):
