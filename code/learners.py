@@ -9,7 +9,7 @@ GRADIENT_GLOBAL_NORM = 5.0
 
 
 class Learner(ABC):
-    def __init__(self, network, learning_rate, train_batch, run_name):
+    def __init__(self, network, learning_rate, train_batch, run_name, clip_gradient=True):
         self.lr = tf.placeholder(tf.float32)
         self.net = network
         self.learning_rate = learning_rate
@@ -17,10 +17,13 @@ class Learner(ABC):
         self.loss_op = self.loss()
 
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-            gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
-            gradients, _ = tf.clip_by_global_norm(gradients, GRADIENT_GLOBAL_NORM)
-            self.train_step = optimizer.apply_gradients(zip(gradients, variables))
+            if clip_gradient:
+                optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+                gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
+                gradients, _ = tf.clip_by_global_norm(gradients, GRADIENT_GLOBAL_NORM)
+                self.train_step = optimizer.apply_gradients(zip(gradients, variables))
+            else:
+                self.train_step = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss_op)
 
         self.lr_summary = tf.summary.scalar('lr_summary', self.lr)
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
@@ -146,7 +149,7 @@ class PredictionLossLearner(Learner):
 class LinearPredictionLossLearner(Learner):
     def __init__(self, network, beta, learning_rate, train_batch, run_name):
         self.beta = beta
-        super().__init__(network, learning_rate, train_batch, run_name)
+        super().__init__(network, learning_rate, train_batch, run_name, False)
 
     def loss(self):
         loss = tf.square(tf.norm(self.net.inputs[:, 1:] - self.net.decoder_output[:, :-1], axis=1))
