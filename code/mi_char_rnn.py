@@ -12,7 +12,7 @@ TRAIN_BATCH = 200
 SEQ_LENGTH = 20
 LEARNING_RATE = 0.001
 BETA = 0.001
-LEARNING_RATE_INCREASE_DELTA = 20
+LEARNING_RATE_INCREASE_DELTA = 30
 
 
 def main(beta, learning_rate, layers):
@@ -43,7 +43,7 @@ def main(beta, learning_rate, layers):
             learning_rate /= 2
             last_update = epoch
         elif epoch - last_update > LEARNING_RATE_INCREASE_DELTA:
-            learning_rate *= 2
+            learning_rate *= 1.5
             last_update = epoch
         former_loss = total_loss
 
