@@ -149,7 +149,7 @@ class PredictionLossLearner(Learner):
 class LinearPredictionLossLearner(Learner):
     def __init__(self, network, beta, learning_rate, train_batch, run_name):
         self.beta = beta
-        super().__init__(network, learning_rate, train_batch, run_name)
+        super().__init__(network, learning_rate, train_batch, run_name, False)
 
     def loss(self):
         loss = tf.square(tf.norm(self.net.inputs[:, 1:] - self.net.decoder_output[:, :-1], axis=1))
