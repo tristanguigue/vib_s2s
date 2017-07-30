@@ -7,6 +7,8 @@ class StochasticNetwork(ABC):
     def __init__(self, bottleneck_size, update_prior):
         self.bottleneck_size = bottleneck_size
         self.update_prior = update_prior
+        self.is_training = tf.placeholder(tf.bool, name='is-training')
+
         with tf.name_scope('stochastic_layer'):
             standard_mu = tf.zeros(bottleneck_size)
             standard_sigma = tf.ones(bottleneck_size)
@@ -69,7 +71,7 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
 
 class StochasticRNN(StochasticNetwork):
     def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior,
-                 lstm=True, binary=True):
+                 lstm=True, binary=True, do_batch_norm=False):
         super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
@@ -101,6 +103,8 @@ class StochasticRNN(StochasticNetwork):
 
         with tf.variable_scope('rnn'):
             outputs, state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
+            if do_batch_norm:
+                outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
 
         flat_outputs = tf.reshape(outputs, [-1, hidden_size])
         encoder_output = tf.matmul(flat_outputs, out_weights) + out_biases

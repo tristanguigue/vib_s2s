@@ -16,7 +16,7 @@ def cut_seq(seq, start_pos, seq_length):
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_size, test_size,
-         hidden_units, bottleneck_size, batch_size, lstm_cell, save_checkpoints):
+         hidden_units, bottleneck_size, batch_size, lstm_cell, save_checkpoints, clip, batch_norm):
     data = np.load(DIR + DATA_DIR)
     train_data = data[:train_size]
     test_data = data[train_size:train_size + test_size]
@@ -32,8 +32,9 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
     best_loss = None
     best_train_loss = None
 
-    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, lstm_cell, False)
-    learner = LinearPredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name)
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, lstm_cell,
+                         binary=False, do_batch_norm=batch_norm)
+    learner = LinearPredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name, clip=clip)
 
     for epoch in range(nb_epochs):
         print('\nEpoch:', epoch)
@@ -74,7 +75,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--beta', type=float, default=0.001,
                         help='the value of beta, mutual information regulariser')
-    parser.add_argument('--rate', type=float, default=0.0005,
+    parser.add_argument('--rate', type=float, default=0.0002,
                         help='the learning rate for the Adam optimiser')
     parser.add_argument('--start', type=int, default=0,
                         help='start position in sequence')
@@ -98,8 +99,12 @@ if __name__ == '__main__':
                         help='is lstm cell')
     parser.add_argument('--checkpoint', type=int, default=1,
                         help='save checkpoints')
+    parser.add_argument('--clip', type=int, default=1,
+                        help='clip gradient')
+    parser.add_argument('--batch_norm', type=int, default=0,
+                        help='clip gradient')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.epochs,
          args.train, args.test, args.hidden, args.bottleneck, args.batch, bool(args.lstm),
-         bool(args.checkpoint))
+         bool(args.checkpoint), bool(args.clip), bool(args.batch_norm))

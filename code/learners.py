@@ -5,7 +5,7 @@ import os
 
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 LOGS_PATH = 'logs/'
-GRADIENT_GLOBAL_NORM = 5.0
+GRADIENT_GLOBAL_NORM = 10.0
 
 
 class Learner(ABC):
@@ -45,7 +45,8 @@ class Learner(ABC):
             self.learning_rate = learning_rate
         feed_dict = {
             self.net.x: batch_xs,
-            self.lr: self.learning_rate
+            self.lr: self.learning_rate,
+            self.net.is_training: True
         }
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
@@ -63,7 +64,10 @@ class Learner(ABC):
         loader.reset_batch_pointer()
         for i in range(nb_batches):
             batch_xs, batch_ys = loader.next_batch()
-            feed_dict = {self.net.x: batch_xs}
+            feed_dict = {
+                self.net.x: batch_xs,
+                self.net.is_training: False
+            }
             if batch_ys is not None:
                 feed_dict.update({self.net.y_true: batch_ys})
             batch_loss, batch_accuracy, test_loss_summary = self.sess.run(
@@ -147,9 +151,9 @@ class PredictionLossLearner(Learner):
 
 
 class LinearPredictionLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch, run_name):
+    def __init__(self, network, beta, learning_rate, train_batch, run_name, clip=True):
         self.beta = beta
-        super().__init__(network, learning_rate, train_batch, run_name, False)
+        super().__init__(network, learning_rate, train_batch, run_name, clip)
 
     def loss(self):
         loss = tf.square(tf.norm(self.net.inputs[:, 1:] - self.net.decoder_output[:, :-1], axis=1))
