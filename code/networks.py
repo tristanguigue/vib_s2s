@@ -83,7 +83,6 @@ class StochasticRNN(StochasticNetwork):
 
         stack = tf.contrib.rnn.MultiRNNCell(
             [cell for _ in range(layers)])
-        encoder_output = 2 * bottleneck_size
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
@@ -94,8 +93,10 @@ class StochasticRNN(StochasticNetwork):
             self.inputs = tf.expand_dims(self.inputs, 2)
 
         with tf.name_scope('encoder'):
-            out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
-            out_biases = self.bias_variable('out_biases', [encoder_output])
+            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
+            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
+            out_weights_logvar = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
+            out_biases_logvar = self.bias_variable('out_biases_logvar', [bottleneck_size])
 
         with tf.name_scope('decoder'):
             decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
@@ -107,10 +108,9 @@ class StochasticRNN(StochasticNetwork):
                 outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
 
         flat_outputs = tf.reshape(outputs, [-1, hidden_size])
-        encoder_output = tf.matmul(flat_outputs, out_weights) + out_biases
-
-        self.mu = encoder_output[:, :bottleneck_size]
-        self.sigma = tf.nn.elu(encoder_output[:, bottleneck_size:]) + 1
+        self.mu = tf.matmul(flat_outputs, out_weights_mu) + out_biases_mu
+        logvar_encoder = tf.matmul(flat_outputs, out_weights_logvar) + out_biases_logvar
+        self.sigma = tf.exp(0.5 * logvar_encoder)
         epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
         z = self.mu + tf.matmul(self.sigma, epsilon)
 
@@ -125,8 +125,7 @@ class StochasticRNN(StochasticNetwork):
         with tf.variable_scope('rnn', reuse=True):
             pred_outputs, pred_state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
             flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
-            encoder_pred_output = tf.matmul(flat_pred_outputs, out_weights) + out_biases
-            mu = encoder_pred_output[:, :bottleneck_size]
+            mu = tf.matmul(flat_pred_outputs, out_weights_mu) + out_biases_mu
             decoder_pred_output = tf.matmul(mu, decoder_weights) + decoder_biases
             decoder_pred_output = tf.reshape(decoder_pred_output, [-1, seq_size, output_size])
             self.predicted_sequence = tf.squeeze(tf.cast(
