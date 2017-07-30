@@ -110,7 +110,7 @@ class StochasticRNN(StochasticNetwork):
         encoder_output = tf.matmul(flat_outputs, out_weights) + out_biases
 
         self.mu = encoder_output[:, :bottleneck_size]
-        self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
+        self.sigma = tf.nn.elu(encoder_output[:, bottleneck_size:]) + 1
         epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
         z = self.mu + tf.matmul(self.sigma, epsilon)
 
