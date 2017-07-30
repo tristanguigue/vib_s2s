@@ -109,8 +109,8 @@ class StochasticRNN(StochasticNetwork):
 
         flat_outputs = tf.reshape(outputs, [-1, hidden_size])
         self.mu = tf.matmul(flat_outputs, out_weights_mu) + out_biases_mu
-        logvar_encoder = tf.matmul(flat_outputs, out_weights_logvar) + out_biases_logvar
-        self.sigma = tf.exp(0.5 * logvar_encoder)
+        log_sigma_sq = tf.matmul(flat_outputs, out_weights_logvar) + out_biases_logvar
+        self.sigma = tf.sqrt(tf.exp(log_sigma_sq))
         epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
         z = self.mu + tf.matmul(self.sigma, epsilon)
 
