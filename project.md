@@ -77,7 +77,7 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 - Use smaller bottleneck!
 
 # July 25th
-- Try lu + 1 instead of softplus
+- Try elu + 1 instead of softplus
 - Try smaller learning rate
 - Try batch norm
 

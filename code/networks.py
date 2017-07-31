@@ -128,8 +128,11 @@ class StochasticRNN(StochasticNetwork):
             mu = tf.matmul(flat_pred_outputs, out_weights_mu) + out_biases_mu
             decoder_pred_output = tf.matmul(mu, decoder_weights) + decoder_biases
             decoder_pred_output = tf.reshape(decoder_pred_output, [-1, seq_size, output_size])
-            self.predicted_sequence = tf.squeeze(tf.cast(
-                tf.round(tf.sigmoid(self.decoder_output)), tf.int32))
+            if binary:
+                decoder_pred_output = tf.cast(
+                    tf.round(tf.sigmoid(decoder_pred_output)), tf.int32)
+
+            self.predicted_sequence = tf.squeeze(decoder_pred_output)
 
 
 class Seq2Seq(StochasticNetwork):

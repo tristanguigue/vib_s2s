@@ -3,7 +3,7 @@ import numpy as np
 import time
 import math
 import matplotlib.pyplot as plt
-from tools import kl_divergence 
+from tools import kl_divergence
 
 seq_size = 30
 hidden_size = 128
