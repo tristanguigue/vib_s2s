@@ -90,9 +90,9 @@ class Learner(ABC):
 
 
 class SupervisedLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch):
+    def __init__(self, network, beta, learning_rate, train_batch, run_name):
         self.beta = beta
-        super().__init__(network, learning_rate, train_batch)
+        super().__init__(network, learning_rate, train_batch, run_name)
 
     def loss(self):
         cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(
