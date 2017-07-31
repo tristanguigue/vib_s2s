@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-seq_size = 30
+seq_size = 60
 
 
 train_samples = []
@@ -10,7 +10,7 @@ start_x, start_y = np.random.multivariate_normal([-10, -8], [[1, 0], [0, 1]], 10
 for i in range(1000):
     sequence = []
     for t in range(seq_size):
-        sequence.append(start_y[i] + ((t - 10) / 10)**3 + np.random.normal(scale=0.3))
+        sequence.append(start_y[i] + ((t - 25) / 16)**3 + np.random.normal(scale=0.5))
     train_samples.append(sequence)
 
 start_x, start_y = np.random.multivariate_normal([7, 3], [[1, 0], [0, 1]], 1000).T
@@ -18,7 +18,7 @@ test_samples = []
 for i in range(1000):
     sequence = []
     for t in range(seq_size):
-        sequence.append(start_y[i] + ((t - 10) / 10)**3 + np.random.normal(scale=0.3))
+        sequence.append(start_y[i] + ((t - 25) / 16)**3 + np.random.normal(scale=0.5))
     test_samples.append(sequence)
 
 train_samples = np.asarray(train_samples)
