@@ -12,7 +12,7 @@ DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples, epochs,
-         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell):
+         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, save_checkpoints):
     mnist = input_data.read_data_sets(DATA_DIR)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
@@ -29,7 +29,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
 
-    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, bool(lstm_cell))
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, lstm_cell)
     learner = PredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name)
     best_loss = None
 
@@ -50,9 +50,10 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
-        if best_loss is None or test_loss < best_loss:
-            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
-            best_loss = test_loss
+        if save_checkpoints:
+            if best_loss is None or test_loss < best_loss:
+                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+                best_loss = test_loss
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
@@ -90,7 +91,10 @@ if __name__ == '__main__':
                         help='batch size')
     parser.add_argument('--lstm', type=int, default=1,
                         help='is lstm cell')
+    parser.add_argument('--checkpoint', type=int, default=0,
+                        help='save checkpoints')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test,
-         args.epochs, args.hidden, args.bottleneck, args.label, args.batch, args.lstm)
+         args.epochs, args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm),
+         bool(args.checkpoint))
