@@ -33,11 +33,10 @@ def main(beta, learning_rate):
         total_loss = 0
         for i in range(epoch_batches):
             batch_xs, batch_ys = mnist.train.next_batch(BATCH_SIZE)
-            current_loss, lr_summary, loss_summary = learner.train_network(
+            current_loss, loss_summary = learner.train_network(
                 batch_xs, batch_ys, learning_rate)
             total_loss += current_loss
 
-        learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
         learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)

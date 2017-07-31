@@ -25,7 +25,7 @@ class Learner(ABC):
             else:
                 self.train_step = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss_op)
 
-        self.lr_summary = tf.summary.scalar('lr_summary', self.lr)
+        self.acc_summary = tf.summary.scalar('accuracy_summary', self.net.accuracy)
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
         self.test_loss_summary = tf.summary.scalar('test_loss_summary', self.loss_op)
 
@@ -51,11 +51,11 @@ class Learner(ABC):
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
 
-        _, current_loss, lr_summary, train_loss_summary = self.sess.run(
-            [self.train_step, self.loss_op, self.lr_summary, self.train_loss_summary],
+        _, current_loss, train_loss_summary = self.sess.run(
+            [self.train_step, self.loss_op, self.train_loss_summary],
             feed_dict=feed_dict)
 
-        return current_loss, lr_summary, train_loss_summary
+        return current_loss, train_loss_summary
 
     def test_network(self, loader, epoch):
         total_accuracy = 0
@@ -70,13 +70,14 @@ class Learner(ABC):
             }
             if batch_ys is not None:
                 feed_dict.update({self.net.y_true: batch_ys})
-            batch_loss, batch_accuracy, test_loss_summary = self.sess.run(
-                [self.loss_op, self.net.accuracy, self.test_loss_summary], feed_dict=feed_dict)
+            batch_loss, batch_accuracy, test_loss_summary, acc_summary = self.sess.run(
+                [self.loss_op, self.net.accuracy, self.test_loss_summary, self.acc_summary], feed_dict=feed_dict)
             total_accuracy += batch_accuracy
             total_loss += batch_loss
 
             if epoch:
                 self.writer.add_summary(test_loss_summary, epoch * nb_batches + i)
+                self.writer.add_summary(acc_summary, epoch * nb_batches + i)
 
         return total_loss / nb_batches, total_accuracy / nb_batches
 

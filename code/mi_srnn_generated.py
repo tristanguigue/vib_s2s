@@ -16,7 +16,7 @@ def cut_seq(seq, start_pos, seq_length):
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_size, test_size,
-         hidden_units, bottleneck_size, batch_size, lstm_cell):
+         hidden_units, bottleneck_size, batch_size, lstm_cell, save_checkpoints):
     data = np.load(DIR + DATA_DIR)
     train_data = data[:train_size]
     test_data = data[train_size:train_size + test_size]
@@ -32,7 +32,7 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
     best_loss = None
     best_train_loss = None
 
-    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, bool(lstm_cell))
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, lstm_cell)
     learner = PredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name)
 
     for epoch in range(nb_epochs):
@@ -43,23 +43,23 @@ def main(beta, learning_rate, start_pos, seq_length, layers, nb_epochs, train_si
         total_loss = 0
         for i in range(train_loader.num_batches):
             batch_xs, _ = train_loader.next_batch()
-            current_loss, lr_summary, loss_summary = learner.train_network(
+            current_loss, loss_summary = learner.train_network(
                 batch_xs, None, learning_rate)
             total_loss += current_loss
 
-            learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
-        if best_loss is None or test_loss < best_loss:
-            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
-            best_loss = test_loss
+        if save_checkpoints:
+            if best_loss is None or test_loss < best_loss:
+                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+                best_loss = test_loss
 
-        if best_train_loss is None or train_loss < best_train_loss:
-            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + 'train_' + run_name)
-            best_train_loss = train_loss
+            if best_train_loss is None or train_loss < best_train_loss:
+                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + 'train_' + run_name)
+                best_train_loss = train_loss
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
@@ -96,7 +96,10 @@ if __name__ == '__main__':
                         help='batch size')
     parser.add_argument('--lstm', type=int, default=1,
                         help='is lstm cell')
+    parser.add_argument('--checkpoint', type=int, default=0,
+                        help='save checkpoints')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.epochs,
-         args.train, args.test, args.hidden, args.bottleneck, args.batch, args.lstm)
+         args.train, args.test, args.hidden, args.bottleneck, args.batch, bool(args.lstm),
+         bool(args.checkpoint))
