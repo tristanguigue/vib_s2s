@@ -12,8 +12,10 @@ DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 SAMPLE_EVERY = 200
 NB_SAMPLES = 4
 
+
 def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
-         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, output_seq_size):
+         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, output_seq_size,
+         save_checkpoints):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     seq_size = mnist.train.images.shape[1]
     partial_sequence_size = int(2 * seq_size / 3)
@@ -30,7 +32,7 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
     seq2seq = Seq2Seq(seq_size, partial_sequence_size, output_seq_size, hidden_units,
-                      bottleneck_size, 1, layers, True)
+                      bottleneck_size, 1, layers, update_prior=True, lstm=lstm_cell)
     learner = PartialPredictionLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
 
@@ -42,21 +44,21 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
         total_loss = 0
         for i in range(train_loader.num_batches):
             batch_xs, _ = train_loader.next_batch()
-            current_loss, lr_summary, loss_summary = learner.train_network(
+            current_loss, loss_summary = learner.train_network(
                 batch_xs, None, learning_rate)
             total_loss += current_loss
 
-            learner.writer.add_summary(lr_summary, epoch * train_loader.num_batches + i)
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
-        if best_loss is None or test_loss < best_loss:
-            learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
-            best_loss = test_loss
+        if save_checkpoints:
+            if best_loss is None or test_loss < best_loss:
+                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+                best_loss = test_loss
 
-        if not epoch % SAMPLE_EVERY:
+        if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
             train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
             test_samples = learner.sample_sequence(test_data[:NB_SAMPLES])
             print(train_samples)
@@ -96,7 +98,10 @@ if __name__ == '__main__':
                         help='is lstm cell')
     parser.add_argument('--output_seq_size', type=int, default=15,
                         help='output sequence size')
+    parser.add_argument('--checkpoint', type=int, default=0,
+                        help='save checkpoints')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.label, args.batch, args.lstm, args.output_seq_size)
+         args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm), args.output_seq_size,
+         bool(args.checkpoint))

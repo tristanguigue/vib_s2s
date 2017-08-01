@@ -69,9 +69,9 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 
-class StochasticRNN(StochasticNetwork):
-    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior,
-                 lstm=True, binary=True, do_batch_norm=False):
+class StochasticHiddenRNN(StochasticNetwork):
+    def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size, layers,
+                 update_prior, lstm=True, binary=True, do_batch_norm=False):
         super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
@@ -83,6 +83,88 @@ class StochasticRNN(StochasticNetwork):
 
         stack = tf.contrib.rnn.MultiRNNCell(
             [cell for _ in range(layers)])
+
+        with tf.name_scope('input'):
+            self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
+            if binary:
+                self.inputs = tf_binarize(self.x)
+            else:
+                self.inputs = self.x
+            self.inputs = tf.expand_dims(self.inputs, 2)
+
+        with tf.name_scope('encoder_h1'):
+            self.h1_weights = self.weight_variable('h1_weights', [input_size, hidden_size])
+            self.h1_biases = self.bias_variable('h1_biases', [hidden_size])
+
+        with tf.name_scope('encoder_h2'):
+            self.h2_weights = self.weight_variable('h2_weights', [hidden_size, hidden_size])
+            self.h2_biases = self.bias_variable('h2_biases', [hidden_size])
+
+        with tf.name_scope('encoder'):
+            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
+            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
+            out_weights_logvar = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
+            out_biases_logvar = self.bias_variable('out_biases_logvar', [bottleneck_size])
+
+        with tf.name_scope('decoder'):
+            decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
+            decoder_biases = self.bias_variable('decoder_biases', [output_size])
+
+        hidden1 = tf.nn.relu(tf.matmul(self.inputs, self.h1_weights) + self.h1_biases)
+        hidden2 = tf.nn.relu(tf.matmul(hidden1, self.h2_weights) + self.h2_biases)
+        self.mu = tf.matmul(hidden2, out_weights_mu) + out_biases_mu
+        sigma_raw = tf.matmul(hidden2, out_weights_logvar) + out_biases_logvar
+        self.sigma = tf.nn.softplus(sigma_raw)
+        epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
+        z = self.mu + tf.matmul(self.sigma, epsilon)
+
+        with tf.variable_scope('rnn'):
+            outputs, state = tf.nn.dynamic_rnn(z, self.inputs, dtype=tf.float32)
+            if do_batch_norm:
+                outputs = tf.layers.batch_normalization(outputs, training=self.is_training)
+
+        flat_outputs = tf.reshape(outputs, [-1, hidden_size])
+
+        decoder_output = tf.matmul(flat_outputs, decoder_weights) + decoder_biases
+        self.decoder_output = tf.reshape(decoder_output, [-1, seq_size, output_size])
+
+        true_pixels = self.inputs[:, 1:]
+        predicted_pixels = tf.round(tf.sigmoid(self.decoder_output[:, :-1]))
+        accurate_predictions = tf.equal(predicted_pixels, true_pixels)
+        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+
+        with tf.variable_scope('rnn', reuse=True):
+            pred_outputs, pred_state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
+            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
+            mu = tf.matmul(flat_pred_outputs, out_weights_mu) + out_biases_mu
+            decoder_pred_output = tf.matmul(mu, decoder_weights) + decoder_biases
+            decoder_pred_output = tf.reshape(decoder_pred_output, [-1, seq_size, output_size])
+            if binary:
+                decoder_pred_output = tf.cast(
+                    tf.round(tf.sigmoid(decoder_pred_output)), tf.int32)
+
+            self.predicted_sequence = tf.squeeze(decoder_pred_output)
+
+
+class StochasticRNN(StochasticNetwork):
+    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior,
+                 lstm=True, binary=True, do_batch_norm=False):
+        super().__init__(bottleneck_size, update_prior)
+        self.seq_size = seq_size
+        self.output_size = output_size
+        self.bottleneck_size = bottleneck_size
+
+        if lstm:
+            cell = tf.contrib.rnn.GRUCell(hidden_size)
+        else:
+            cell = tf.contrib.rnn.BasicRNNCell(hidden_size)
+
+        stack = tf.contrib.rnn.MultiRNNCell(
+            [cell for _ in range(layers)])
+
+        with tf.name_scope('prior'):
+            self.sigma0 = tf.Variable(tf.ones([seq_size, bottleneck_size]), name='prior-variance')
+            self.mu0 = tf.Variable(tf.zeros([seq_size, bottleneck_size]), name='prior-mean')
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
@@ -137,14 +219,20 @@ class StochasticRNN(StochasticNetwork):
 
 class Seq2Seq(StochasticNetwork):
     def __init__(self, seq_size, partial_seq_size, output_seq_size, hidden_size,
-                 bottleneck_size, output_size, layers, update_prior):
+                 bottleneck_size, output_size, layers, update_prior, lstm):
         super().__init__(bottleneck_size, update_prior)
         self.partial_seq_size = partial_seq_size
         self.output_seq_size = output_seq_size
         self.output_size = output_size
 
+        if lstm:
+            cell = tf.contrib.rnn.GRUCell(hidden_size)
+        else:
+            cell = tf.contrib.rnn.BasicRNNCell(hidden_size)
+
         stack = tf.contrib.rnn.MultiRNNCell(
-            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(layers)])
+            [cell for _ in range(layers)])
+
         encoder_output = 2 * bottleneck_size
 
         with tf.name_scope('input'):

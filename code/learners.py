@@ -139,15 +139,16 @@ class PredictionLossLearner(Learner):
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=true_pixels, logits=self.net.decoder_output[:, :-1])
 
-        if self.net.update_prior:
-            kl = kl_divergence(
-                self.net.mu, self.net.sigma, self.net.mu0, self.net.sigma0)
-        else:
-            kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
-
         if self.beta:
-            kl = tf.reshape(kl, [-1, self.net.seq_size, self.net.output_size])
-            return tf.reduce_mean(cross_entropy + self.beta * kl[:, :-1])
+            mu = tf.reshape(self.net.mu, [-1, self.net.seq_size, self.net.bottleneck_size])
+            sigma = tf.reshape(self.net.sigma, [-1, self.net.seq_size, self.net.bottleneck_size])
+
+            if self.net.update_prior:
+                kl = kl_divergence(mu, sigma, self.net.mu0, self.net.sigma0)
+            else:
+                kl = kl_divergence_with_std(mu, sigma)
+
+            return tf.reduce_mean(tf.squeeze(cross_entropy) + self.beta * kl[:, :-1])
         return tf.reduce_mean(cross_entropy)
 
 

@@ -8,7 +8,6 @@ The paper ([https://arxiv.org/pdf/1612.00410v1.pdf]) is about learning a low dim
 Simple RNN:
 $$ h_{t+1} = \tanh(W_{enc}^t h_t + W_{in}^T + b_{enc})$$
 $$ \mu_z = W_\mu^T h_{end} + b\mu$$
-$$ \mu_z = W_\mu^T h_{end} + b\mu$$
 $$ \log(\Sigma_z) = W_\Sigma^T h_{end} + b\Sigma_z$$
 
 ## March 10th
@@ -80,7 +79,8 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 - Try elu + 1 instead of softplus
 - Try smaller learning rate
 - Try batch norm
-- Idea: learning beta? What objective function?
+- Idea: learning beta? What objective
 
-
-
+# August 1st 
+- Try with images and compress directly input
+- Try different priors for each seq

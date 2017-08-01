@@ -12,13 +12,13 @@ def tf_binarize(images, threshold=0.1):
 
 def kl_divergence_with_std(mu, sigma):
     return 0.5 * tf.reduce_sum(
-        tf.square(mu) + tf.square(sigma) - tf.log(tf.square(sigma)) - 1, 1)
+        tf.square(mu) + tf.square(sigma) - tf.log(tf.square(sigma)) - 1, 2)
 
 
 def kl_divergence(mu, sigma, mu0, sigma0):
     return 0.5 * tf.reduce_sum(
         tf.square((mu - mu0) / sigma0) + tf.square(sigma / sigma0) +
-        tf.log(tf.square(sigma0)) - tf.log(tf.square(sigma)) - 1, 1)
+        tf.log(tf.square(sigma0)) - tf.log(tf.square(sigma)) - 1, 2)
 
 
 class Batcher():
