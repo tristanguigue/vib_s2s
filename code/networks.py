@@ -226,7 +226,7 @@ class Seq2Seq(StochasticNetwork):
         self.output_size = output_size
 
         if lstm:
-            cell = tf.contrib.rnn.GRUCell(hidden_size)
+            cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
         else:
             cell = tf.contrib.rnn.BasicRNNCell(hidden_size)
 

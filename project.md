@@ -84,3 +84,4 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 # August 1st 
 - Try with images and compress directly input
 - Try different priors for each seq
+- Problem, results vary a lot for trial to trial
