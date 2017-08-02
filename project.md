@@ -85,3 +85,6 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 - Try with images and compress directly input
 - Try different priors for each seq
 - Problem, results vary a lot for trial to trial
+- Make marginal on z dependent on x?
+- Impact of K vs impact of beta
+- Try MC average over 12 samples

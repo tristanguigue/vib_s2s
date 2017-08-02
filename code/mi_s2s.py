@@ -18,7 +18,7 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
          save_checkpoints):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     seq_size = mnist.train.images.shape[1]
-    partial_sequence_size = int(2 * seq_size / 3)
+    partial_sequence_size = int(1 * seq_size / 3)
     run_name = 's2s_mnist_' + str(int(time.time()))
 
     train_data = mnist.train.images
