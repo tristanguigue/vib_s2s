@@ -144,9 +144,9 @@ class PredictionLossLearner(Learner):
             sigma = tf.reshape(self.net.sigma, [-1, self.net.seq_size, self.net.bottleneck_size])
 
             if self.net.update_prior:
-                kl = kl_divergence(mu, sigma, self.net.mu0, self.net.sigma0)
+                kl = kl_divergence(mu, sigma, self.net.mu0, self.net.sigma0, sequence=True)
             else:
-                kl = kl_divergence_with_std(mu, sigma)
+                kl = kl_divergence_with_std(mu, sigma, sequence=True)
 
             return tf.reduce_mean(tf.squeeze(cross_entropy) + self.beta * kl[:, :-1])
         return tf.reduce_mean(cross_entropy)
@@ -160,13 +160,14 @@ class LinearPredictionLossLearner(Learner):
     def loss(self):
         loss = tf.square(tf.norm(self.net.inputs[:, 1:] - self.net.decoder_output[:, :-1], axis=1))
         if self.beta:
-            if self.net.update_prior:
-                kl = kl_divergence(
-                    self.net.mu, self.net.sigma, self.net.mu0, self.net.sigma0)
-            else:
-                kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
+            mu = tf.reshape(self.net.mu, [-1, self.net.seq_size, self.net.bottleneck_size])
+            sigma = tf.reshape(self.net.sigma, [-1, self.net.seq_size, self.net.bottleneck_size])
 
-            kl = tf.reshape(kl, [-1, self.net.seq_size])
+            if self.net.update_prior:
+                kl = kl_divergence(mu, sigma, self.net.mu0, self.net.sigma0, sequence=True)
+            else:
+                kl = kl_divergence_with_std(mu, sigma, sequence=True)
+
             kl = tf.reduce_sum(kl[:, :-1], axis=1)
             return tf.reduce_mean(loss + self.beta * kl)
 

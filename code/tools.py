@@ -10,15 +10,23 @@ def tf_binarize(images, threshold=0.1):
     return tf.cast(threshold < images, tf.float32)
 
 
-def kl_divergence_with_std(mu, sigma):
+def kl_divergence_with_std(mu, sigma, sequence=False):
+    if sequence:
+        reduce_index = 2
+    else:
+        reduce_index = 1
     return 0.5 * tf.reduce_sum(
-        tf.square(mu) + tf.square(sigma) - tf.log(tf.square(sigma)) - 1, 2)
+        tf.square(mu) + tf.square(sigma) - tf.log(tf.square(sigma)) - 1, reduce_index)
 
 
-def kl_divergence(mu, sigma, mu0, sigma0):
+def kl_divergence(mu, sigma, mu0, sigma0, sequence=False):
+    if sequence:
+        reduce_index = 2
+    else:
+        reduce_index = 1
     return 0.5 * tf.reduce_sum(
         tf.square((mu - mu0) / sigma0) + tf.square(sigma / sigma0) +
-        tf.log(tf.square(sigma0)) - tf.log(tf.square(sigma)) - 1, 2)
+        tf.log(tf.square(sigma0)) - tf.log(tf.square(sigma)) - 1, reduce_index)
 
 
 class Batcher():
