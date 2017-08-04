@@ -82,9 +82,9 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 - Idea: learning beta? What objective
 
 # August 1st 
-- Try with images and compress directly input
+- Try with images and compress directly input -> can't do that otherwise Y_i won't be independent from Z_j
 - Try different priors for each seq
 - Problem, results vary a lot for trial to trial
 - Make marginal on z dependent on x?
-- Impact of K vs impact of beta
+- Impact of K (with max likelihood, how to get it?) vs impact of beta
 - Try MC average over 12 samples

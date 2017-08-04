@@ -218,12 +218,13 @@ class StochasticRNN(StochasticNetwork):
 
 
 class Seq2Seq(StochasticNetwork):
-    def __init__(self, seq_size, partial_seq_size, output_seq_size, hidden_size,
+    def __init__(self, partial_seq_size, output_seq_size, hidden_size,
                  bottleneck_size, output_size, layers, update_prior, lstm):
         super().__init__(bottleneck_size, update_prior)
         self.partial_seq_size = partial_seq_size
         self.output_seq_size = output_seq_size
         self.output_size = output_size
+        seq_size = partial_seq_size + output_seq_size
 
         if lstm:
             cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)

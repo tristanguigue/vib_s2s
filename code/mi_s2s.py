@@ -13,12 +13,12 @@ SAMPLE_EVERY = 200
 NB_SAMPLES = 4
 
 
-def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
-         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, output_seq_size,
-         save_checkpoints):
+def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
+         epochs, hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell,
+         output_seq_size, save_checkpoints):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
-    seq_size = mnist.train.images.shape[1]
-    partial_sequence_size = int(1 * seq_size / 3)
+    if not partial_seq_length:
+        partial_seq_length = mnist.train.images.shape[1]
     run_name = 's2s_mnist_' + str(int(time.time()))
 
     train_data = mnist.train.images
@@ -26,12 +26,12 @@ def main(beta, learning_rate, layers, train_samples, test_samples, epochs,
     if label_selected:
         train_data = mnist.train.images[mnist.train.labels == label_selected]
         test_data = mnist.test.images[mnist.test.labels == label_selected]
-    train_data = train_data[:train_samples, :]
-    test_data = test_data[:test_samples, :]
+    train_data = train_data[:train_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
+    test_data = test_data[:test_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
 
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
-    seq2seq = Seq2Seq(seq_size, partial_sequence_size, output_seq_size, hidden_units,
+    seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
                       bottleneck_size, 1, layers, update_prior=True, lstm=lstm_cell)
     learner = PartialPredictionLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
@@ -76,8 +76,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--beta', type=float, default=0.001,
                         help='the value of beta, mutual information regulariser')
-    parser.add_argument('--rate', type=float, default=0.0005,
+    parser.add_argument('--rate', type=float, default=0.0001,
                         help='the learning rate for the Adam optimiser')
+    parser.add_argument('--start', type=int, default=0,
+                        help='start position in sequence')
+    parser.add_argument('--length', type=int,
+                        help='length of sequence')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
     parser.add_argument('--train', type=int, default=500,
@@ -102,6 +106,6 @@ if __name__ == '__main__':
                         help='save checkpoints')
 
     args = parser.parse_args()
-    main(args.beta, args.rate, args.layers, args.train, args.test, args.epochs,
+    main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
          args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm), args.output_seq_size,
          bool(args.checkpoint))
