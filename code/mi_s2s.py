@@ -92,7 +92,7 @@ if __name__ == '__main__':
                         help='number of epochs to run')
     parser.add_argument('--hidden', type=int, default=128,
                         help='hidden units')
-    parser.add_argument('--bottleneck', type=int, default=64,
+    parser.add_argument('--bottleneck', type=int, default=32,
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
                         help='label of images selected')

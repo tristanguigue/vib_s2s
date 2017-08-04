@@ -6,33 +6,43 @@ import time
 from tools import Batcher
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
-HIDDEN_SIZE = 1024
-BOTTLENECK_SIZE = 256
-NB_EPOCHS = 500
-BATCH_SIZE = 500
 
 
-def main(beta, learning_rate):
+def main(beta, learning_rate, nb_epochs, train_size, test_size,
+         hidden_units, bottleneck_size, batch_size, nb_samples):
     run_name = 'sfnn_mnist_' + str(int(time.time()))
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     input_size = mnist.train.images.shape[1]
     output_size = mnist.train.labels.shape[1]
 
-    sfnn = StochasticFeedForwardNetwork(input_size, HIDDEN_SIZE, BOTTLENECK_SIZE, output_size, True)
-    learner = SupervisedLossLearner(sfnn, beta, learning_rate, BATCH_SIZE, run_name)
-    epoch_batches = int(mnist.train.num_examples / BATCH_SIZE)
-    train_loader = Batcher(mnist.train.images, mnist.train.labels, BATCH_SIZE)
-    test_loader = Batcher(mnist.test.images, mnist.test.labels, BATCH_SIZE)
+    sfnn = StochasticFeedForwardNetwork(input_size, hidden_units, bottleneck_size, output_size,
+                                        True, nb_samples)
+    learner = SupervisedLossLearner(sfnn, beta, learning_rate, batch_size, run_name)
+    epoch_batches = int(mnist.train.num_examples / batch_size)
+
+    train_data = mnist.train.images
+    train_labels = mnist.train.labels
+    test_data = mnist.test.images
+    test_labels = mnist.test.labels
+    if train_size:
+        train_data = mnist.train.images[:train_size, :]
+        train_labels = mnist.train.labels[:train_size]
+    if test_size:
+        test_data = mnist.test.images[:test_size, :]
+        test_labels = mnist.test.labels[:test_size]
+
+    train_loader = Batcher(train_data, train_labels, batch_size)
+    test_loader = Batcher(test_data, test_labels, batch_size)
     best_accuracy = 0
 
-    for epoch in range(NB_EPOCHS):
+    for epoch in range(nb_epochs):
         print('\nEpoch:', epoch)
         start = time.time()
         train_loader.reset_batch_pointer()
 
         total_loss = 0
         for i in range(epoch_batches):
-            batch_xs, batch_ys = mnist.train.next_batch(BATCH_SIZE)
+            batch_xs, batch_ys = mnist.train.next_batch(batch_size)
             current_loss, loss_summary = learner.train_network(
                 batch_xs, batch_ys, learning_rate)
             total_loss += current_loss
@@ -60,6 +70,21 @@ if __name__ == '__main__':
                         help='the value of beta, mutual information regulariser')
     parser.add_argument('--rate', type=float, default=0.0001,
                         help='the learning rate for the Adam optimiser')
+    parser.add_argument('--train', type=int,
+                        help='train samples')
+    parser.add_argument('--test', type=int,
+                        help='test samples')
+    parser.add_argument('--epochs', type=int, default=500,
+                        help='number of epochs to run')
+    parser.add_argument('--hidden', type=int, default=1024,
+                        help='hidden units')
+    parser.add_argument('--bottleneck', type=int, default=256,
+                        help='bottleneck size')
+    parser.add_argument('--batch', type=int, default=500,
+                        help='batch size')
+    parser.add_argument('--samples', type=int, default=1,
+                        help='number of samples to get posterior expectation')
 
     args = parser.parse_args()
-    main(args.beta, args.rate)
+    main(args.beta, args.rate, args.epochs,
+         args.train, args.test, args.hidden, args.bottleneck, args.batch, args.samples)
