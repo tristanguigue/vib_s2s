@@ -63,14 +63,10 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
 
         batch_size = tf.shape(self.x)[0]
         epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        sigma = tf.expand_dims(self.sigma, 1)
-        mu = tf.expand_dims(self.mu, 1)
+        epsilon = tf.reduce_mean(epsilon, 1)
 
-        z = mu + tf.multiply(epsilon, sigma)
-        z = tf.reshape(z, [-1, bottleneck_size])
-        decoder_output = tf.matmul(z, self.decoder_weights) + self.decoder_biases
-        decoder_output = tf.reshape(decoder_output, [-1, nb_samples, output_size])
-        self.decoder_output = tf.reduce_mean(decoder_output, 1)
+        z = self.mu + tf.multiply(epsilon, self.sigma)
+        self.decoder_output = tf.matmul(z, self.decoder_weights) + self.decoder_biases
 
         accurate_predictions = tf.equal(tf.arg_max(self.decoder_output, 1), tf.argmax(self.y_true, 1))
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
