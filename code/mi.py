@@ -9,14 +9,14 @@ DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 
 
 def main(beta, learning_rate, nb_epochs, train_size, test_size,
-         hidden_units, bottleneck_size, batch_size, nb_samples):
+         hidden_units, bottleneck_size, batch_size, nb_samples, update_marginal):
     run_name = 'sfnn_mnist_' + str(int(time.time()))
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     input_size = mnist.train.images.shape[1]
     output_size = mnist.train.labels.shape[1]
 
     sfnn = StochasticFeedForwardNetwork(input_size, hidden_units, bottleneck_size, output_size,
-                                        True, nb_samples)
+                                        update_marginal, nb_samples)
     learner = SupervisedLossLearner(sfnn, beta, learning_rate, batch_size, run_name)
     epoch_batches = int(mnist.train.num_examples / batch_size)
 
@@ -84,7 +84,10 @@ if __name__ == '__main__':
                         help='batch size')
     parser.add_argument('--samples', type=int, default=1,
                         help='number of samples to get posterior expectation')
+    parser.add_argument('--update_marginal', type=int, default=1,
+                        help='marginal has learnable variable mean and variance')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.epochs,
-         args.train, args.test, args.hidden, args.bottleneck, args.batch, args.samples)
+         args.train, args.test, args.hidden, args.bottleneck, args.batch, args.samples,
+         bool(args.update_marginal))
