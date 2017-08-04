@@ -189,8 +189,7 @@ class Seq2Seq(StochasticNetwork):
 
         self.mu = encoder_output[:, :bottleneck_size]
         self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
-        epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
-
+        epsilon = self.multivariate_std.sample()
         z = self.mu + tf.multiply(self.sigma, epsilon)
 
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
@@ -274,7 +273,7 @@ class StochasticCharRNN(StochasticNetwork):
 
         self.mu = encoder_output[:, :bottleneck_size]
         self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
-        epsilon = tf.reshape(self.multivariate_std.sample(), [-1, 1])
+        epsilon = self.multivariate_std.sample()
         z = self.mu + tf.multiply(self.sigma, epsilon)
 
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
