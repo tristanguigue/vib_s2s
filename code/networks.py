@@ -250,6 +250,53 @@ class Seq2Seq(StochasticNetwork):
         self.sampled_sequence = tf.stack(sampled_sequence)
 
 
+class Seq2Pixel(StochasticNetwork):
+    def __init__(self, partial_seq_size, hidden_size, bottleneck_size, output_size,
+                 layers, nb_samples, update_prior, lstm):
+        super().__init__(bottleneck_size, update_prior)
+        self.partial_seq_size = partial_seq_size
+        seq_size = partial_seq_size + 1
+
+        if lstm:
+            cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+        else:
+            cell = tf.contrib.rnn.BasicRNNCell(hidden_size)
+        stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(layers)])
+
+        encoder_output = 2 * bottleneck_size
+
+        with tf.name_scope('input'):
+            self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
+            self.inputs = tf.expand_dims(tf_binarize(self.x), 2)
+            self.y_true = self.inputs[:, -1]
+
+        with tf.name_scope('encoder'):
+            out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
+            out_biases = self.bias_variable('out_biases', [encoder_output])
+
+        with tf.name_scope('decoder'):
+            decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
+            decoder_biases = self.bias_variable('decoder_biases', [output_size])
+
+        with tf.variable_scope('rnn'):
+            outputs, state = tf.nn.dynamic_rnn(stack, self.inputs[:, :-1], dtype=tf.float32)
+
+        encoder_output = tf.matmul(outputs[:, -1], out_weights) + out_biases
+
+        self.mu = encoder_output[:, :bottleneck_size]
+        self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
+
+        batch_size = tf.shape(self.x)[0]
+        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
+        epsilon = tf.reduce_mean(epsilon, 1)
+
+        z = self.mu + tf.multiply(self.sigma, epsilon)
+        self.decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
+
+        accurate_predictions = tf.equal(tf.round(tf.sigmoid(self.decoder_output)), self.y_true)
+        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+
+
 class StochasticCharRNN(StochasticNetwork):
     def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior):
         super().__init__(bottleneck_size, update_prior)
