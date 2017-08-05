@@ -44,7 +44,8 @@ class Batcher():
             perm = np.arange(self.num_examples)
             np.random.shuffle(perm)
             self.data = self.data[perm]
-            self.labels = self.labels[perm]
+            if self.labels:
+                self.labels = self.labels[perm]
 
     def next_batch(self):
         x = self.data[self.pointer * self.batch_size: (self.pointer + 1) * self.batch_size]
