@@ -42,7 +42,7 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
 
         total_loss = 0
         for i in range(epoch_batches):
-            batch_xs, batch_ys = mnist.train.next_batch(batch_size)
+            batch_xs, batch_ys = train_loader.next_batch()
             current_loss, loss_summary = learner.train_network(
                 batch_xs, batch_ys, learning_rate)
             total_loss += current_loss
