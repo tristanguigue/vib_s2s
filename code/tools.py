@@ -35,10 +35,16 @@ class Batcher():
         self.batch_size = batch_size
         self.labels = labels
         self.pointer = 0
-        self.num_batches = int(data.shape[0] / batch_size)
+        self.num_examples = data.shape[0]
+        self.num_batches = int(self.num_examples / batch_size)
 
-    def reset_batch_pointer(self):
+    def reset_batch_pointer(self, shuffle=True):
         self.pointer = 0
+        if shuffle:
+            perm = np.arange(self.num_examples)
+            np.random.shuffle(perm)
+            self.data = self.data[perm]
+            self.labels = self.labels[perm]
 
     def next_batch(self):
         x = self.data[self.pointer * self.batch_size: (self.pointer + 1) * self.batch_size]
