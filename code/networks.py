@@ -120,7 +120,7 @@ class StochasticRNN(StochasticNetwork):
         self.sigma = tf.nn.softplus(tf.matmul(flat_outputs, out_weights_logvar) + out_biases_logvar)
 
         batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
+        epsilon = self.multivariate_std.sample(sample_shape=(batch_size * seq_size, nb_samples))
         epsilon = tf.reduce_mean(epsilon, 1)
 
         z = self.mu + tf.multiply(self.sigma, epsilon)
