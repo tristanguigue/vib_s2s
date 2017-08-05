@@ -30,7 +30,6 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
     def __init__(self, input_size, hidden_size, bottleneck_size, output_size, update_prior,
                  nb_samples):
         super().__init__(bottleneck_size, update_prior)
-        encoder_output = 2 * bottleneck_size
 
         # Variables
         with tf.name_scope('input'):
@@ -38,35 +37,36 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
             self.y_true = tf.placeholder(tf.float32, [None, output_size], name='y-input')
 
         with tf.name_scope('encoder_h1'):
-            self.h1_weights = self.weight_variable('h1_weights', [input_size, hidden_size])
-            self.h1_biases = self.bias_variable('h1_biases', [hidden_size])
+            h1_weights = self.weight_variable('h1_weights', [input_size, hidden_size])
+            h1_biases = self.bias_variable('h1_biases', [hidden_size])
 
         with tf.name_scope('encoder_h2'):
-            self.h2_weights = self.weight_variable('h2_weights', [hidden_size, hidden_size])
-            self.h2_biases = self.bias_variable('h2_biases', [hidden_size])
+            h2_weights = self.weight_variable('h2_weights', [hidden_size, hidden_size])
+            h2_biases = self.bias_variable('h2_biases', [hidden_size])
 
         with tf.name_scope('encoder_out'):
-            self.enc_out_weights = self.weight_variable('enc_out_weights', [hidden_size, encoder_output])
-            self.enc_out_biases = self.bias_variable('enc_out_biases', [encoder_output])
+            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
+            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
+            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
+            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
 
         with tf.name_scope('decoder'):
-            self.decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
-            self.decoder_biases = self.bias_variable('decoder_biases', [output_size])
+            decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
+            decoder_biases = self.bias_variable('decoder_biases', [output_size])
 
         # Model
-        hidden1 = tf.nn.relu(tf.matmul(self.x, self.h1_weights) + self.h1_biases)
-        hidden2 = tf.nn.relu(tf.matmul(hidden1, self.h2_weights) + self.h2_biases)
-        encoder_output = tf.matmul(hidden2, self.enc_out_weights) + self.enc_out_biases
+        hidden1 = tf.nn.relu(tf.matmul(self.x, h1_weights) + h1_biases)
+        hidden2 = tf.nn.relu(tf.matmul(hidden1, h2_weights) + h2_biases)
 
-        self.mu = encoder_output[:, :bottleneck_size]
-        self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
+        self.mu = tf.matmul(hidden2, out_weights_mu) + out_biases_mu
+        self.sigma = tf.nn.softplus(tf.matmul(hidden2, out_weights_sigma) + out_biases_sigma)
 
         batch_size = tf.shape(self.x)[0]
         epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
         epsilon = tf.reduce_mean(epsilon, 1)
 
         z = self.mu + tf.multiply(epsilon, self.sigma)
-        self.decoder_output = tf.matmul(z, self.decoder_weights) + self.decoder_biases
+        self.decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
 
         accurate_predictions = tf.equal(tf.arg_max(self.decoder_output, 1), tf.argmax(self.y_true, 1))
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))

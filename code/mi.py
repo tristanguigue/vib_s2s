@@ -59,7 +59,9 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
 
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
-            print('Best accuracy')
+            print('-----')
+            print('### Best accuracy ###')
+            print('-----')
 
     learner.sess.close()
 
