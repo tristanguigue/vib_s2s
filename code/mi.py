@@ -47,7 +47,7 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
                 batch_xs, batch_ys, learning_rate)
             total_loss += current_loss
 
-        learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
+            learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
