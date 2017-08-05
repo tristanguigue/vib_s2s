@@ -24,8 +24,14 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     if label_selected:
         train_data = mnist.train.images[mnist.train.labels == label_selected]
         test_data = mnist.test.images[mnist.test.labels == label_selected]
-    train_data = train_data[:train_samples, start_pos:start_pos + partial_seq_length + 1]
-    test_data = test_data[:test_samples, start_pos:start_pos + partial_seq_length + 1]
+    if train_samples:
+        train_data = train_data[:train_samples, start_pos:start_pos + partial_seq_length + 1]
+    else:
+        train_data = train_data[:, start_pos:start_pos + partial_seq_length + 1]
+    if test_samples:
+        test_data = test_data[:test_samples, start_pos:start_pos + partial_seq_length + 1]
+    else:
+        test_data = test_data[:, start_pos:start_pos + partial_seq_length + 1]
 
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
@@ -75,9 +81,9 @@ if __name__ == '__main__':
                         help='length of sequence')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
-    parser.add_argument('--train', type=int, default=5000,
+    parser.add_argument('--train', type=int,
                         help='train samples')
-    parser.add_argument('--test', type=int, default=1000,
+    parser.add_argument('--test', type=int,
                         help='test samples')
     parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')
