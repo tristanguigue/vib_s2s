@@ -12,7 +12,8 @@ DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test_samples, epochs,
-         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, save_checkpoints):
+         hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell, save_checkpoints,
+         nb_samples, update_marginal):
     mnist = input_data.read_data_sets(DATA_DIR)
     if not seq_length:
         seq_length = mnist.train.images.shape[1]
@@ -29,7 +30,8 @@ def main(beta, learning_rate, start_pos, seq_length, layers, train_samples, test
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
 
-    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, True, lstm_cell)
+    srnn = StochasticRNN(seq_length, hidden_units, bottleneck_size, 1, layers, nb_samples,
+                         update_marginal, lstm_cell)
     learner = PredictionLossLearner(srnn, beta, learning_rate, batch_size, run_name)
     best_loss = None
 
@@ -93,8 +95,12 @@ if __name__ == '__main__':
                         help='is lstm cell')
     parser.add_argument('--checkpoint', type=int, default=0,
                         help='save checkpoints')
+    parser.add_argument('--samples', type=int, default=1,
+                        help='number of samples to get posterior expectation')
+    parser.add_argument('--update_marginal', type=int, default=1,
+                        help='marginal has learnable variable mean and variance')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test,
          args.epochs, args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm),
-         bool(args.checkpoint))
+         bool(args.checkpoint), args.samples, bool(args.update_marginal))

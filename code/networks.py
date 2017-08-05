@@ -73,8 +73,8 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
 
 
 class StochasticRNN(StochasticNetwork):
-    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, update_prior,
-                 lstm=True, binary=True, do_batch_norm=False):
+    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, layers, nb_samples,
+                 update_prior=True, lstm=True, binary=True, do_batch_norm=False):
         super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
@@ -117,9 +117,12 @@ class StochasticRNN(StochasticNetwork):
 
         flat_outputs = tf.reshape(outputs, [-1, hidden_size])
         self.mu = tf.matmul(flat_outputs, out_weights_mu) + out_biases_mu
-        sigma_raw = tf.matmul(flat_outputs, out_weights_logvar) + out_biases_logvar
-        self.sigma = tf.nn.softplus(sigma_raw)
-        epsilon = self.multivariate_std.sample()
+        self.sigma = tf.nn.softplus(tf.matmul(flat_outputs, out_weights_logvar) + out_biases_logvar)
+
+        batch_size = tf.shape(self.x)[0]
+        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
+        epsilon = tf.reduce_mean(epsilon, 1)
+
         z = self.mu + tf.multiply(self.sigma, epsilon)
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
         self.decoder_output = tf.reshape(decoder_output, [-1, seq_size, output_size])
@@ -144,7 +147,7 @@ class StochasticRNN(StochasticNetwork):
 
 class Seq2Seq(StochasticNetwork):
     def __init__(self, partial_seq_size, output_seq_size, hidden_size,
-                 bottleneck_size, output_size, layers, update_prior, lstm):
+                 bottleneck_size, output_size, layers, nb_samples, update_prior, lstm):
         super().__init__(bottleneck_size, update_prior)
         self.partial_seq_size = partial_seq_size
         self.output_seq_size = output_seq_size
@@ -189,7 +192,11 @@ class Seq2Seq(StochasticNetwork):
 
         self.mu = encoder_output[:, :bottleneck_size]
         self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
-        epsilon = self.multivariate_std.sample()
+
+        batch_size = tf.shape(self.x)[0]
+        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
+        epsilon = tf.reduce_mean(epsilon, 1)
+
         z = self.mu + tf.multiply(self.sigma, epsilon)
 
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases

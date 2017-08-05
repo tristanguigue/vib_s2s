@@ -15,7 +15,7 @@ NB_SAMPLES = 4
 
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
          epochs, hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell,
-         output_seq_size, save_checkpoints):
+         output_seq_size, save_checkpoints, nb_samples, update_marginal):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     if not partial_seq_length:
         partial_seq_length = mnist.train.images.shape[1]
@@ -32,7 +32,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
-                      bottleneck_size, 1, layers, update_prior=True, lstm=lstm_cell)
+                      bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell)
     learner = PartialPredictionLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
 
@@ -104,8 +104,12 @@ if __name__ == '__main__':
                         help='output sequence size')
     parser.add_argument('--checkpoint', type=int, default=0,
                         help='save checkpoints')
+    parser.add_argument('--samples', type=int, default=1,
+                        help='number of samples to get posterior expectation')
+    parser.add_argument('--update_marginal', type=int, default=1,
+                        help='marginal has learnable variable mean and variance')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
          args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm), args.output_seq_size,
-         bool(args.checkpoint))
+         bool(args.checkpoint), args.samples, bool(args.update_marginal))
