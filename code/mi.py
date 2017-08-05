@@ -34,6 +34,7 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, batch_size)
     best_accuracy = 0
+    best_loss = None
 
     for epoch in range(nb_epochs):
         print('\nEpoch:', epoch)
@@ -61,6 +62,11 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
             best_accuracy = test_accuracy
             print('-----')
             print('### Best accuracy ###')
+            print('-----')
+        if best_loss is None or test_loss < best_loss:
+            best_loss = test_loss
+            print('-----')
+            print('### Best loss ###')
             print('-----')
 
     learner.sess.close()
