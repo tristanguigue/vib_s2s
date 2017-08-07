@@ -57,7 +57,6 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
         print('Loss: ', total_loss / epoch_batches)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
         print('Train loss: ', train_loss, ', test loss: ', test_loss)
-
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
             print('-----')

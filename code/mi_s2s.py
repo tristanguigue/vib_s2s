@@ -9,7 +9,7 @@ import os
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
-SAMPLE_EVERY = 200
+SAMPLE_EVERY = 100
 NB_SAMPLES = 4
 
 
@@ -26,8 +26,14 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     if label_selected:
         train_data = mnist.train.images[mnist.train.labels == label_selected]
         test_data = mnist.test.images[mnist.test.labels == label_selected]
-    train_data = train_data[:train_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
-    test_data = test_data[:test_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
+    if train_samples:
+        train_data = train_data[:train_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
+    else:
+        train_data = train_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
+    if test_samples:
+        test_data = test_data[:test_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
+    else:
+        test_data = test_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
 
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
@@ -35,6 +41,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
                       bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell)
     learner = PartialPredictionLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
+    best_accuracy = 0
 
     for epoch in range(epochs):
         print('\nEpoch:', epoch)
@@ -53,11 +60,6 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
-        if save_checkpoints:
-            if best_loss is None or test_loss < best_loss:
-                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
-                best_loss = test_loss
-
         if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
             train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
             test_samples = learner.sample_sequence(test_data[:NB_SAMPLES])
@@ -68,6 +70,18 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
         print('Loss: ', total_loss / train_loader.num_batches)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
         print('Train loss: ', train_loss, ', test loss: ', test_loss)
+        if test_accuracy > best_accuracy:
+            best_accuracy = test_accuracy
+            print('-----')
+            print('### Best accuracy ###')
+            print('-----')
+        if best_loss is None or test_loss < best_loss:
+            if save_checkpoints:
+                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+            best_loss = test_loss
+            print('-----')
+            print('### Best loss ###')
+            print('-----')
 
     learner.sess.close()
 
@@ -84,9 +98,9 @@ if __name__ == '__main__':
                         help='length of sequence')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
-    parser.add_argument('--train', type=int, default=500,
+    parser.add_argument('--train', type=int,
                         help='train samples')
-    parser.add_argument('--test', type=int, default=500,
+    parser.add_argument('--test', type=int,
                         help='test samples')
     parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')

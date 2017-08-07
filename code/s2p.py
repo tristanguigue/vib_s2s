@@ -38,6 +38,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     seq2p = Seq2Pixel(partial_seq_length, hidden_units, bottleneck_size, 1, layers,
                       nb_samples, update_prior=update_marginal, lstm=lstm_cell)
     learner = SupervisedLossLearner(seq2p, beta, learning_rate, batch_size, run_name, binary=True)
+    best_accuracy = 0
     best_loss = None
 
     for epoch in range(epochs):
@@ -56,15 +57,22 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
-        if save_checkpoints:
-            if best_loss is None or test_loss < best_loss:
-                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
-                best_loss = test_loss
-
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
         print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
         print('Train loss: ', train_loss, ', test loss: ', test_loss)
+        if test_accuracy > best_accuracy:
+            best_accuracy = test_accuracy
+            print('-----')
+            print('### Best accuracy ###')
+            print('-----')
+        if best_loss is None or test_loss < best_loss:
+            if save_checkpoints:
+                learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+            best_loss = test_loss
+            print('-----')
+            print('### Best loss ###')
+            print('-----')
 
     learner.sess.close()
 
