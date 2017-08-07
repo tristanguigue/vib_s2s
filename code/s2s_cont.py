@@ -1,12 +1,13 @@
-from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Seq
 from learners import SupervisedLossLearner
 from tools import Batcher
 import argparse
 import time
 import os
+import numpy as np
 
-DATA_DIR = '/tmp/tensorflow/mnist/input_data'
+TRAIN_DATA = 'data/linear_shift_train_samples.npy'
+TEST_DATA = 'data/linear_shift_test_samples.npy'
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 SAMPLE_EVERY = 100
@@ -16,32 +17,25 @@ NB_SAMPLES = 4
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
          epochs, hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell,
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
-    mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
-    if not partial_seq_length:
-        partial_seq_length = mnist.train.images.shape[1]
-    run_name = 's2s_mnist_' + str(int(time.time()))
+    run_name = 's2s_cont_' + str(int(time.time()))
 
-    train_data = mnist.train.images
-    test_data = mnist.test.images
-    if label_selected:
-        train_data = mnist.train.images[mnist.train.labels == label_selected]
-        test_data = mnist.test.images[mnist.test.labels == label_selected]
-    if train_samples:
-        train_data = train_data[:train_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
-    else:
-        train_data = train_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
-    if test_samples:
-        test_data = test_data[:test_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
-    else:
-        test_data = test_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
+    train_data = np.load(DIR + TRAIN_DATA)
+    test_data = np.load(DIR + TEST_DATA)
+    train_data = train_data[:train_samples]
+    test_data = test_data[:test_samples]
+    if not partial_seq_length:
+        partial_seq_length = train_data.shape[1] - output_seq_size
+
+    train_data = train_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
+    test_data = test_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
 
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
                       bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell)
-    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=True)
+    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
+                                    continuous=True)
     best_loss = None
-    best_accuracy = 0
 
     for epoch in range(epochs):
         print('\nEpoch:', epoch)
@@ -57,8 +51,8 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
 
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
-        train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
-        test_loss, test_accuracy = learner.test_network(test_loader, epoch)
+        train_loss, _ = learner.test_network(train_loader, epoch=None)
+        test_loss, _ = learner.test_network(test_loader, epoch)
 
         if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
             train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
@@ -68,13 +62,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
-        print('Train accuracy: ', train_accuracy, ', test accuracy: ', test_accuracy)
         print('Train loss: ', train_loss, ', test loss: ', test_loss)
-        if test_accuracy > best_accuracy:
-            best_accuracy = test_accuracy
-            print('-----')
-            print('### Best accuracy ###')
-            print('-----')
         if best_loss is None or test_loss < best_loss:
             if save_checkpoints:
                 learner.saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)

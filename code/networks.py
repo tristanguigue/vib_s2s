@@ -66,9 +66,9 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
         epsilon = tf.reduce_mean(epsilon, 1)
 
         z = self.mu + tf.multiply(epsilon, self.sigma)
-        self.decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
+        self.output = tf.matmul(z, decoder_weights) + decoder_biases
 
-        accurate_predictions = tf.equal(tf.arg_max(self.decoder_output, 1), tf.argmax(self.y_true, 1))
+        accurate_predictions = tf.equal(tf.arg_max(self.output, 1), tf.argmax(self.y_true, 1))
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 
@@ -99,6 +99,7 @@ class StochasticRNN(StochasticNetwork):
             else:
                 self.inputs = self.x
             self.inputs = tf.expand_dims(self.inputs, 2)
+            self.y_true = self.inputs[:, 1:]
 
         with tf.name_scope('encoder'):
             out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
@@ -125,11 +126,10 @@ class StochasticRNN(StochasticNetwork):
 
         z = self.mu + tf.multiply(self.sigma, epsilon)
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
-        self.decoder_output = tf.reshape(decoder_output, [-1, seq_size, output_size])
+        self.output = tf.reshape(decoder_output, [-1, seq_size, output_size])[:, :-1]
 
-        true_pixels = self.inputs[:, 1:]
-        predicted_pixels = tf.round(tf.sigmoid(self.decoder_output[:, :-1]))
-        accurate_predictions = tf.equal(predicted_pixels, true_pixels)
+        predicted_pixels = tf.round(tf.sigmoid(self.output))
+        accurate_predictions = tf.equal(predicted_pixels, self.y_true)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
         with tf.variable_scope('rnn', reuse=True):
@@ -147,7 +147,8 @@ class StochasticRNN(StochasticNetwork):
 
 class Seq2Seq(StochasticNetwork):
     def __init__(self, partial_seq_size, output_seq_size, hidden_size,
-                 bottleneck_size, output_size, layers, nb_samples, update_prior, lstm):
+                 bottleneck_size, output_size, layers, nb_samples, update_prior, lstm,
+                 binary=True):
         super().__init__(bottleneck_size, update_prior)
         self.partial_seq_size = partial_seq_size
         self.output_seq_size = output_seq_size
@@ -166,9 +167,14 @@ class Seq2Seq(StochasticNetwork):
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
-            self.inputs = tf.expand_dims(tf_binarize(self.x), 2)
-            pred_inputs = self.inputs[:, self.partial_seq_size:
+            if binary:
+                self.inputs = tf_binarize(self.x)
+            else:
+                self.inputs = self.x
+            self.inputs = tf.expand_dims(self.inputs, 2)
+            true_seq = self.inputs[:, self.partial_seq_size:
                                       self.partial_seq_size + self.output_seq_size]
+            self.y_true = tf.squeeze(true_seq)
 
         with tf.name_scope('encoder'):
             out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
@@ -209,54 +215,48 @@ class Seq2Seq(StochasticNetwork):
             [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
                 for l in range(layers)])
 
-        # with tf.variable_scope('pred_rnn'):
-        #     pred_outputs, pred_state = tf.nn.dynamic_rnn(
-        #         stack, pred_inputs, initial_state=new_state, dtype=tf.float32)
-        #     flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
-        #     seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
-        #     seq_logits = tf.reshape(seq_logits, [-1, output_seq_size])
-        #     seq_logits = tf.concat([pred_logits, seq_logits[:, :-1]], 1)
+        with tf.variable_scope('pred_rnn'):
+            pred_outputs, pred_state = tf.nn.dynamic_rnn(
+                stack, true_seq, initial_state=new_state, dtype=tf.float32)
+            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
+            seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
+            seq_logits = tf.reshape(seq_logits, [-1, output_seq_size])
+            self.output = tf.concat([pred_logits, seq_logits[:, :-1]], 1)
 
-        #     self.predicted_sequence = tf.cast(tf.round(tf.sigmoid(seq_logits)), tf.int32)
-        #     self.pred_x_entropy = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-        #         logits=seq_logits, labels=tf.squeeze(pred_inputs)))
+            self.predicted_sequence = self.output
+            if binary:
+                self.predicted_sequence = tf.cast(tf.round(tf.sigmoid(self.output)), tf.int32)
 
-        # accurate_predictions = tf.equal(self.predicted_sequence,
-        #                                 tf.cast(tf.squeeze(pred_inputs), tf.int32))
-        # self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        accurate_predictions = tf.equal(self.predicted_sequence, tf.cast(self.y_true, tf.int32))
+        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
         sampled_sequence = []
         sample_logits = []
         with tf.variable_scope('sampled_rnn'):
             pred_rnn_state = new_state
-            pred_pixels = tf.round(tf.sigmoid(pred_logits))
-            sampled_sequence.append(tf.cast(tf.squeeze(pred_pixels), tf.int32))
+            pred_inputs = tf.round(tf.sigmoid(pred_logits))
+            sampled_sequence.append(tf.cast(tf.squeeze(pred_inputs), tf.int32))
             sample_logits.append(pred_logits)
-
             pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                stack, tf.cast(tf.reshape(pred_pixels, [-1, 1, 1]), tf.float32),
+                stack, tf.cast(tf.reshape(pred_inputs, [-1, 1, 1]), tf.float32),
                 initial_state=pred_rnn_state, dtype=tf.float32)
 
         with tf.variable_scope('sampled_rnn', reuse=True):
             # Loop to predict all the next pixels
             for i in range(output_seq_size - 1):
                 pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
-                pred_pixels = tf.round(tf.sigmoid(pred_logits))
-                sampled_sequence.append(tf.cast(tf.squeeze(pred_pixels), tf.int32))
+                pred_inputs = tf.round(tf.sigmoid(pred_logits))
+                sampled_sequence.append(tf.cast(tf.squeeze(pred_inputs), tf.int32))
                 sample_logits.append(pred_logits)
-
                 pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                    stack, tf.reshape(pred_pixels, [-1, 1, 1]), initial_state=pred_rnn_state,
+                    stack, tf.reshape(pred_inputs, [-1, 1, 1]), initial_state=pred_rnn_state,
                     dtype=tf.float32)
 
         sample_logits = tf.transpose(tf.stack(sample_logits), [1, 0, 2])
-        self.sampled_entropy = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=tf.squeeze(sample_logits), labels=tf.squeeze(pred_inputs)))
-        self.sampled_sequence = tf.transpose(tf.stack(sampled_sequence))
 
-        accurate_predictions = tf.equal(self.sampled_sequence,
-                                        tf.cast(tf.squeeze(pred_inputs), tf.int32))
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        self.sampled_entropy = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=tf.squeeze(sample_logits), labels=tf.squeeze(true_seq)))
+        self.sampled_sequence = tf.transpose(tf.stack(sampled_sequence))
 
 
 class Seq2Pixel(StochasticNetwork):
@@ -300,9 +300,9 @@ class Seq2Pixel(StochasticNetwork):
         epsilon = tf.reduce_mean(epsilon, 1)
 
         z = self.mu + tf.multiply(self.sigma, epsilon)
-        self.decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
+        self.output = tf.matmul(z, decoder_weights) + decoder_biases
 
-        accurate_predictions = tf.equal(tf.round(tf.sigmoid(self.decoder_output)), self.y_true)
+        accurate_predictions = tf.equal(tf.round(tf.sigmoid(self.output)), self.y_true)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 
@@ -319,6 +319,7 @@ class StochasticCharRNN(StochasticNetwork):
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.int64, [None, seq_size], name='x-input')
             self.embedding = tf.get_variable('embedding', [output_size, hidden_size])
+            self.y_true = self.x[:, 1:]
 
         with tf.name_scope('encoder'):
             out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
@@ -340,9 +341,8 @@ class StochasticCharRNN(StochasticNetwork):
         z = self.mu + tf.multiply(self.sigma, epsilon)
 
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
-        self.decoder_output = tf.reshape(decoder_output, [-1, seq_size, output_size])
+        self.output = tf.reshape(decoder_output, [-1, seq_size, output_size])[:, :-1]
 
-        true_char = self.x[:, 1:]
-        predicted_char = tf.arg_max(self.decoder_output[:, :-1], 2)
-        accurate_predictions = tf.equal(predicted_char, true_char)
+        predicted_char = tf.arg_max(self.output, 2)
+        accurate_predictions = tf.equal(predicted_char, self.y_true)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))

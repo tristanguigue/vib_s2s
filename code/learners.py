@@ -91,37 +91,22 @@ class Learner(ABC):
 
 
 class SupervisedLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=False):
+    def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=False,
+                 continuous=False):
         self.beta = beta
         self.binary = binary
+        self.continuous = continuous
         super().__init__(network, learning_rate, train_batch, run_name)
 
     def loss(self):
         if self.binary:
-            cross_entropy_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-                labels=self.net.y_true, logits=self.net.decoder_output)
+            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
+                labels=self.net.y_true, logits=self.net.output)
+        elif self.continuous:
+            cross_entropy = tf.square(tf.norm(self.net.y_true - self.net.output, axis=1))
         else:
-            cross_entropy_loss = tf.nn.softmax_cross_entropy_with_logits(
-                labels=self.net.y_true, logits=self.net.decoder_output)
-
-        if self.net.update_prior:
-            kl_loss = kl_divergence(
-                self.net.mu, self.net.sigma, self.net.mu0, self.net.sigma0)
-        else:
-            kl_loss = kl_divergence_with_std(self.net.mu, self.net.sigma)
-
-        if self.beta:
-            return tf.reduce_mean(cross_entropy_loss + self.beta * kl_loss)
-        return tf.reduce_mean(cross_entropy_loss)
-
-
-class PartialPredictionLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch, run_name):
-        self.beta = beta
-        super().__init__(network, learning_rate, train_batch, run_name)
-
-    def loss(self):
-        cross_entropy = self.net.sampled_entropy
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+                labels=self.net.y_true, logits=self.net.output)
 
         if self.net.update_prior:
             kl_loss = kl_divergence(
@@ -134,15 +119,18 @@ class PartialPredictionLossLearner(Learner):
         return tf.reduce_mean(cross_entropy)
 
 
-class PredictionLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch, run_name):
+class SequenceLossLearner(Learner):
+    def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=True):
         self.beta = beta
+        self.binary = binary
         super().__init__(network, learning_rate, train_batch, run_name)
 
     def loss(self):
-        true_pixels = self.net.inputs[:, 1:]
-        cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=true_pixels, logits=self.net.decoder_output[:, :-1])
+        if self.binary:
+            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
+                labels=self.net.y_true, logits=self.net.output)
+        else:
+            cross_entropy = tf.square(tf.norm(self.net.y_true - self.net.output, axis=1))
 
         if self.beta:
             mu = tf.reshape(self.net.mu, [-1, self.net.seq_size, self.net.bottleneck_size])
@@ -153,45 +141,8 @@ class PredictionLossLearner(Learner):
             else:
                 kl = kl_divergence_with_std(mu, sigma, sequence=True)
 
+            # To check
+            kl = tf.reduce_sum(kl[:, :-1], axis=1)
             return tf.reduce_mean(tf.squeeze(cross_entropy) + self.beta * kl[:, :-1])
         return tf.reduce_mean(cross_entropy)
 
-
-class LinearPredictionLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch, run_name, clip=True):
-        self.beta = beta
-        super().__init__(network, learning_rate, train_batch, run_name, clip)
-
-    def loss(self):
-        loss = tf.square(tf.norm(self.net.inputs[:, 1:] - self.net.decoder_output[:, :-1], axis=1))
-        if self.beta:
-            mu = tf.reshape(self.net.mu, [-1, self.net.seq_size, self.net.bottleneck_size])
-            sigma = tf.reshape(self.net.sigma, [-1, self.net.seq_size, self.net.bottleneck_size])
-
-            if self.net.update_prior:
-                kl = kl_divergence(mu, sigma, self.net.mu0, self.net.sigma0, sequence=True)
-            else:
-                kl = kl_divergence_with_std(mu, sigma, sequence=True)
-
-            kl = tf.reduce_sum(kl[:, :-1], axis=1)
-            return tf.reduce_mean(loss + self.beta * kl)
-
-        return tf.reduce_mean(loss)
-
-
-class CharPredictionLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch):
-        self.beta = beta
-        super().__init__(network, learning_rate, train_batch)
-
-    def loss(self):
-        true_char = tf.one_hot(indices=self.net.x[:, 1:], depth=self.net.output_size)
-        cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=true_char, logits=self.net.decoder_output[:, :-1])
-
-        kl = kl_divergence_with_std(self.net.mu, self.net.sigma)
-        kl = tf.reshape(kl, [-1, self.net.seq_size])
-
-        if self.beta:
-            return tf.reduce_mean(cross_entropy) + self.beta * tf.reduce_mean(kl[:, :-1])
-        return tf.reduce_mean(cross_entropy)
