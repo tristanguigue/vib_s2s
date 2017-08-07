@@ -109,7 +109,7 @@ if __name__ == '__main__':
                         help='save checkpoints')
     parser.add_argument('--samples', type=int, default=1,
                         help='number of samples to get posterior expectation')
-    parser.add_argument('--update_marginal', type=int, default=1,
+    parser.add_argument('--update_marginal', type=int, default=0,
                         help='marginal has learnable variable mean and variance')
 
     args = parser.parse_args()

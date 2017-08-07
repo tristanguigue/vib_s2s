@@ -44,7 +44,7 @@ class Batcher():
             perm = np.arange(self.num_examples)
             np.random.shuffle(perm)
             self.data = self.data[perm]
-            if self.labels:
+            if self.labels is not None:
                 self.labels = self.labels[perm]
 
     def next_batch(self):
