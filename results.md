@@ -38,7 +38,7 @@ Accuracy: 99.10
 - Beta = 10^-2, 1502045656 (not finished)
 
 
-## Seq2Seq
+## Seq2Seq Binary
 ### 1 5k data
 Length = 60
 Start = 300
@@ -129,6 +129,12 @@ Hidden = 128
 Bottleneck = 32
 Batch = 2048
 Samples = 12
+
+- Beta=0, 1502119986
+Loss: 0.2244
+Accuracy: 88.159
+
+## Seq2seq Continous
 
 
 ## Sigma

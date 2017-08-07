@@ -39,7 +39,8 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     test_loader = Batcher(test_data, None, batch_size)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
                       bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell)
-    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=True)
+    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=True,
+                                    reduce_seq=True)
     best_loss = None
     best_accuracy = 0
 

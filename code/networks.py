@@ -173,7 +173,7 @@ class Seq2Seq(StochasticNetwork):
                 self.inputs = self.x
             self.inputs = tf.expand_dims(self.inputs, 2)
             true_seq = self.inputs[:, self.partial_seq_size:
-                                      self.partial_seq_size + self.output_seq_size]
+                                   self.partial_seq_size + self.output_seq_size]
             self.y_true = tf.squeeze(true_seq)
 
         with tf.name_scope('encoder'):
@@ -206,7 +206,7 @@ class Seq2Seq(StochasticNetwork):
         z = self.mu + tf.multiply(self.sigma, epsilon)
 
         decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
-        pred_logits = decoder_output[:, :output_size]
+        first_logits = decoder_output[:, :output_size]
 
         new_state = decoder_output[:, output_size:]
         new_state = tf.reshape(new_state, [layers, 2, -1, hidden_size])
@@ -221,7 +221,7 @@ class Seq2Seq(StochasticNetwork):
             flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
             seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
             seq_logits = tf.reshape(seq_logits, [-1, output_seq_size])
-            self.output = tf.concat([pred_logits, seq_logits[:, :-1]], 1)
+            self.output = tf.concat([first_logits, seq_logits[:, :-1]], 1)
 
             self.predicted_sequence = self.output
             if binary:
@@ -234,9 +234,9 @@ class Seq2Seq(StochasticNetwork):
         sample_logits = []
         with tf.variable_scope('sampled_rnn'):
             pred_rnn_state = new_state
-            pred_inputs = tf.round(tf.sigmoid(pred_logits))
+            pred_inputs = tf.round(tf.sigmoid(first_logits))
             sampled_sequence.append(tf.cast(tf.squeeze(pred_inputs), tf.int32))
-            sample_logits.append(pred_logits)
+            sample_logits.append(first_logits)
             pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
                 stack, tf.cast(tf.reshape(pred_inputs, [-1, 1, 1]), tf.float32),
                 initial_state=pred_rnn_state, dtype=tf.float32)

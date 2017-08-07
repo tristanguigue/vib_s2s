@@ -92,10 +92,11 @@ class Learner(ABC):
 
 class SupervisedLossLearner(Learner):
     def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=False,
-                 continuous=False):
+                 continuous=False, reduce_seq=False):
         self.beta = beta
         self.binary = binary
         self.continuous = continuous
+        self.reduce_seq = reduce_seq
         super().__init__(network, learning_rate, train_batch, run_name)
 
     def loss(self):
@@ -107,6 +108,8 @@ class SupervisedLossLearner(Learner):
         else:
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
                 labels=self.net.y_true, logits=self.net.output)
+        if self.reduce_seq:
+            cross_entropy = tf.reduce_mean(cross_entropy, axis=1)
 
         if self.net.update_prior:
             kl_loss = kl_divergence(
