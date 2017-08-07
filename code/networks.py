@@ -228,15 +228,16 @@ class Seq2Seq(StochasticNetwork):
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
         sampled_sequence = []
-        with tf.variable_scope('rnn', reuse=True):
+        with tf.variable_scope('sampled_rnn'):
             pred_rnn_state = new_state
             pred_pixels = tf.round(tf.sigmoid(pred_logits))
+            sampled_sequence.append(tf.cast(tf.squeeze(pred_pixels), tf.int32))
 
-            pred_pixels = tf.reshape(pred_pixels, [-1, 1, 1])
             pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                stack, tf.cast(pred_pixels, tf.float32),
+                stack, tf.cast(tf.reshape(pred_pixels, [-1, 1, 1]), tf.float32),
                 initial_state=pred_rnn_state, dtype=tf.float32)
 
+        with tf.variable_scope('sampled_rnn', reuse=True):
             # Loop to predict all the next pixels
             for i in range(output_seq_size - 1):
                 pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
