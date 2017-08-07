@@ -209,8 +209,9 @@ class Seq2Seq(StochasticNetwork):
             [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
                 for l in range(layers)])
 
-        with tf.variable_scope('rnn', reuse=True):
-            pred_outputs, pred_state = tf.nn.dynamic_rnn(stack, pred_inputs, dtype=tf.float32)
+        with tf.variable_scope('pred_rnn'):
+            pred_outputs, pred_state = tf.nn.dynamic_rnn(
+                stack, pred_inputs, initial_state=new_state, dtype=tf.float32)
             flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
             seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
             seq_logits = tf.reshape(seq_logits, [-1, output_seq_size])
@@ -228,7 +229,6 @@ class Seq2Seq(StochasticNetwork):
 
         sampled_sequence = []
         with tf.variable_scope('rnn', reuse=True):
-            # Get first cross entropies
             pred_rnn_state = new_state
             pred_pixels = tf.round(tf.sigmoid(pred_logits))
 

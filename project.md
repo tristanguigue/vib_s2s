@@ -88,3 +88,6 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 - Make marginal on z dependent on x?
 - Impact of K (with max likelihood, how to get it?) vs impact of beta
 - Try MC average over 12 samples
+
+# August 5th
+- Checking that sigma decrease for beta = 10^-3, start at 0.68, down to 0.50 then back up to 1. For beta=0, down = 0.02
