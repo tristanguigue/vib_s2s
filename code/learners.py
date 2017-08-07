@@ -121,7 +121,7 @@ class PartialPredictionLossLearner(Learner):
         super().__init__(network, learning_rate, train_batch, run_name)
 
     def loss(self):
-        cross_entropy = self.net.pred_x_entropy
+        cross_entropy = self.net.sampled_entropy
 
         if self.net.update_prior:
             kl_loss = kl_divergence(
