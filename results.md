@@ -39,9 +39,27 @@ Accuracy: 99.10
 
 
 ## Seq2Seq Binary
-### 1 5k data
+### 1 Small dataset, IB works
+Start = 0
+Length = 261
+Hidden = 64
+Bottleneck = 32
+Batch = 100
+Train = 500
+Test = 500
+Predict = 15
+
+- Beta = 0, 1501753687
+Loss: 0.3903 (smoothed 0.9)
+Overfit: yes after 4k epochs
+
+- Beta = 10^-2, 1501685818
+Loss: 0.3716 (smoothed 0.9)
+
+### 2 5k data
 Length = 60
 Start = 300
+Predict = 15
 Train = 5k
 Test = 1k
 Hidden = 128
@@ -61,7 +79,7 @@ No significant difference
 Loss: 0.1490 (from graph, smoothed 0.8)
 Accuracy: 0.1490
 
-# 2 All data
+# 3 All data
 Length = 60
 Start = 300
 Train = All
@@ -85,7 +103,7 @@ Accuracy: 94.80
 Loss: 0.1451
 Accuracy: 94.82
 
-# 3 Longer sequence
+# 4 Longer sequence
 Length = 120
 Start = 300
 Train = All
@@ -100,7 +118,7 @@ Loss: 0.237
 Accuracy: 91.637
 Overfit: no
 
-# 4 Larger bottleneck
+# 5 Larger bottleneck
 Length = 60
 Start = 300
 Train = All
@@ -115,12 +133,17 @@ Loss: 0.1432
 Accuracy: 94.898
 Overfit: no
 
-- Beta=0, learning rate = 10^-5, 1502117681
+- Beta=10^-5, 1502117681
 Loss:  0.1431
 Accuracy: 94.92
 Overfit: No
 
-# 5 Sample loss
+- Beta=10^-3, 1502117681, Long run
+Loss: 0.1432
+Accuracy: 94.903
+Overfit: Very mild
+
+# 6 Sample loss
 Length = 60
 Start = 300
 Train = All
