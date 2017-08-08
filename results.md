@@ -138,7 +138,7 @@ Loss:  0.1431
 Accuracy: 94.92
 Overfit: No
 
-- Beta=10^-3, 1502117681, Long run
+- Beta=10^-3, 1502129328, Long run
 Loss: 0.1432
 Accuracy: 94.903
 Overfit: Very mild
@@ -198,9 +198,12 @@ Bottleneck = 32
 Batch = 500
 Samples = 12
 
-- Beta = 0
-Loss = 
+- Beta = 0, 1502184709
+Loss = 0.0493
+Overfit: No
 
+- Beta = 10^-3, 1502196521
+Loss = 
 
 
 ## Sigma
