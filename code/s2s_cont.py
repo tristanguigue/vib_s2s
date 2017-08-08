@@ -32,7 +32,8 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
-                      bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell)
+                      bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell,
+                      binary=False)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
                                     continuous=True)
     best_loss = None
@@ -49,6 +50,8 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
                 batch_xs, None, learning_rate)
             total_loss += current_loss
 
+            print(epoch, i, train_loader.num_batches)
+            print(epoch + (i + 1) / train_loader.num_batches)
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
         train_loss, _ = learner.test_network(train_loader, epoch=None)

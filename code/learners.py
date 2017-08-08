@@ -76,8 +76,8 @@ class Learner(ABC):
             total_loss += batch_loss
 
             if epoch:
-                self.writer.add_summary(test_loss_summary, epoch + i / nb_batches)
-                self.writer.add_summary(acc_summary, epoch + i / nb_batches)
+                self.writer.add_summary(test_loss_summary, epoch * nb_batches + i)
+                self.writer.add_summary(acc_summary, epoch * nb_batches + i)
 
         return total_loss / nb_batches, total_accuracy / nb_batches
 
