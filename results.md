@@ -157,7 +157,50 @@ Samples = 12
 Loss: 0.2244
 Accuracy: 88.159
 
+# 7 5k data with large bottleneck
+Length = 60
+Start = 300
+Train = 5k
+Test = All
+Hidden = 128
+Bottleneck = 64
+Batch = 512
+Samples = 12
+
+- Beta=0
+Loss: 0.1450
+Accuracy: 94.84
+Overfit: No
+
+# 8 1k data
+Length = 60
+Start = 300
+Train = 1k
+Test = All
+Hidden = 128
+Bottleneck = 64
+Batch = 500
+Samples = 12
+
+- Beta=0
+Loss: 0.1525
+Accuracy: 94.75
+Overfit: No
+
+
 ## Seq2seq Continous
+# 1 Cubic + sinusoidal + noise
+Length = 60
+Train = 5k
+Test = 2k
+Hidden = 128
+Bottleneck = 32
+Batch = 500
+Samples = 12
+
+- Beta = 0
+Loss = 
+
 
 
 ## Sigma
