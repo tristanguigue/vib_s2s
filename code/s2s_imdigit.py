@@ -11,7 +11,7 @@ DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 SAMPLE_EVERY = 100
-NB_SAMPLES = 4
+NB_PRED_SAMPLES = 4
 
 
 def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
@@ -67,11 +67,13 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
-        # if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
-        #     train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
-        #     test_samples = learner.sample_sequence(test_data[:NB_SAMPLES])
-        #     print(train_samples)
-        #     print(test_samples)
+        if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
+            train_samples = learner.predict_sequence(
+                train_data[:NB_PRED_SAMPLES], train_labels[:NB_PRED_SAMPLES])
+            test_samples = learner.predict_sequence(
+                test_data[:NB_PRED_SAMPLES], test_labels[:NB_PRED_SAMPLES])
+            print(train_samples)
+            print(test_samples)
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)

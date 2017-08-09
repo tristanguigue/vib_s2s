@@ -91,3 +91,10 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 
 # August 5th
 - Checking that sigma decrease for beta = 10^-3, start at 0.68, down to 0.50 then back up to 1. For beta=0, down = 0.02
+
+# August 9th
+- True with seq to seq from images to classes
+- Try with generated binary data
+- Come up with new data that requires bottleneck
+- Verify objective for new pixel prediction
+

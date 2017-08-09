@@ -361,9 +361,9 @@ class Seq2LabelsCNN(StochasticNetwork):
             rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
 
         x_image = tf.reshape(self.x, [-1, img_size, img_size, 1])
-        conv1 = layers.conv2d(x_image, 16, [3, 3], scope='conv1', activation_fn=tf.nn.relu)
+        conv1 = layers.conv2d(x_image, channels, [3, 3], scope='conv1', activation_fn=tf.nn.relu)
         pool1 = layers.max_pool2d(conv1, [2, 2], scope='pool1')
-        conv2 = layers.conv2d(pool1, 16, [3, 3], scope='conv2', activation_fn=tf.nn.relu)
+        conv2 = layers.conv2d(pool1, channels, [3, 3], scope='conv2', activation_fn=tf.nn.relu)
         pool2 = layers.max_pool2d(conv2, [2, 2], scope='pool2')
         inputs = tf.reshape(pool2, [-1, seq_size, flat_size * channels])
 

@@ -216,29 +216,74 @@ Batch = 500
 Samples = 12
 Rate = 10^-4
 
-- Beta = 0, rate=2*10^-5, 1502265059
-Accuracy: 33.80
-Loss: 1.889
-
 - Beta= 10^-4, 1502264047
 Accuracy: 33.79
 Loss: 1.880
-
-- Beta= 10^-4, rate=2*10^-5, 1502269300
-Accuracy: 33.81
-Loss: 1.885
 
 - Beta = 10^-3, 1502222038
 Accuracy: 33.569
 Loss: 1.8775
 
-- Beta = 10^-3, rate=2*20^-5, batch=2000
-Loss: 1.8741
-Accuracy: 33.77
-
 - Beta = 10^-2, 1502237492
 Accuracy: 32.96
 Loss: 1.893
+
+# 2
+Length = 5
+Train = All
+Test = All
+Hidden = 128
+Bottleneck = 32
+Batch = 500
+Samples = 12
+Rate = 2*10^-5
+
+- Beta = 0, 1502265059
+Accuracy: 33.80
+Loss: 1.889
+
+- Beta= 10^-4, 1502269300
+Accuracy: 33.81
+Loss: 1.885
+
+
+# 2
+Length = 5
+Train = All
+Test = All
+Hidden = 128
+Bottleneck = 32
+Batch = 2000
+Samples = 12
+Rate = 2*10^-5
+
+- Beta=0
+Accuracy: 33.33
+Loss: 1.893
+
+- Beta = 10^-3
+Accuracy: 33.77
+Loss: 1.8741
+
+- Beta = 10^-4
+Accuracy: 
+Loss: 
+
+## Seq2Labels CNN
+# 1
+Length = 5
+Train = All
+Test = All
+Hidden = 128
+Bottleneck = 32
+Batch = 200
+Samples = 12
+Rate = 2*10^-5
+
+- Beta = 0, 1502280230
+Loss: 1.846
+Accuracy: 29
+
 
 ## Sigma
 ### 1
