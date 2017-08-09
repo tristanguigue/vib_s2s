@@ -233,7 +233,7 @@ Accuracy: 33.569
 Loss: 1.8775
 
 - Beta = 10^-3, rate=2*20^-5, batch=2000
-Loss: 1.874
+Loss: 1.8741
 Accuracy: 33.77
 
 - Beta = 10^-2, 1502237492

@@ -1,5 +1,5 @@
 from tensorflow.examples.tutorials.mnist import input_data
-from networks import Seq2Labels
+from networks import Seq2LabelsCNN
 from learners import SupervisedLossLearner
 from tools import Batcher
 import argparse
@@ -40,7 +40,7 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
 
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, batch_size)
-    seq2seq = Seq2Labels(seq_length, hidden_units, bottleneck_size, input_size,
+    seq2seq = Seq2LabelsCNN(seq_length, hidden_units, bottleneck_size, input_size,
                          output_size, layers, nb_samples, 16, update_prior=True)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name,
                                     reduce_seq=True)
