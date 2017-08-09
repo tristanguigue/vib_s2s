@@ -14,7 +14,7 @@ NB_SAMPLES = 4
 
 
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
-         epochs, hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell,
+         epochs, hidden_units, bottleneck_size, label_selected, batch_size,
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     if not partial_seq_length:
@@ -38,7 +38,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
-                      bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell)
+                      bottleneck_size, 1, layers, nb_samples, update_prior=True)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=True,
                                     reduce_seq=True)
     best_loss = None
@@ -113,8 +113,6 @@ if __name__ == '__main__':
                         help='label of images selected')
     parser.add_argument('--batch', type=int, default=500,
                         help='batch size')
-    parser.add_argument('--lstm', type=int, default=1,
-                        help='is lstm cell')
     parser.add_argument('--output_seq_size', type=int, default=15,
                         help='output sequence size')
     parser.add_argument('--checkpoint', type=int, default=0,
@@ -126,5 +124,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm), args.output_seq_size,
+         args.hidden, args.bottleneck, args.label, args.batch, args.output_seq_size,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))

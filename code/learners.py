@@ -81,13 +81,17 @@ class Learner(ABC):
 
         return total_loss / nb_batches, total_accuracy / nb_batches
 
-    def predict_sequence(self, batch_xs):
-        return self.sess.run(
-            self.net.predicted_sequence, feed_dict={self.net.x: batch_xs})
+    def predict_sequence(self, batch_xs, batch_ys=None):
+        feed_dict = {self.net.x: batch_xs}
+        if batch_ys is not None:
+            feed_dict.update({self.net.y_true: batch_ys})
+        return self.sess.run(self.net.predicted_sequence, feed_dict=feed_dict)
 
-    def sample_sequence(self, batch_xs):
-        return self.sess.run(
-            self.net.sampled_sequence, feed_dict={self.net.x: batch_xs})
+    def sample_sequence(self, batch_xs, batch_ys=None):
+        feed_dict = {self.net.x: batch_xs}
+        if batch_ys is not None:
+            feed_dict.update({self.net.y_true: batch_ys})
+        return self.sess.run(self.net.sampled_sequence, feed_dict=feed_dict)
 
 
 class SupervisedLossLearner(Learner):

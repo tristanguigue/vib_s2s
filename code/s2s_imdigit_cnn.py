@@ -5,13 +5,12 @@ from tools import Batcher
 import argparse
 import time
 import os
-import numpy as np
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 SAMPLE_EVERY = 100
-NB_SAMPLES = 4
+NB_PRED_SAMPLES = 4
 
 
 def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
@@ -19,6 +18,8 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
          save_checkpoints, nb_samples, update_marginal):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     run_name = 's2s_imdigit_' + str(int(time.time()))
+    batch_size = batch_size * seq_length
+    predicted_samples = NB_PRED_SAMPLES * seq_length
 
     input_size = mnist.train.images.shape[1]
     output_size = mnist.train.labels.shape[1]
@@ -37,15 +38,10 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     train_labels = train_labels[:train_samples * seq_length, :]
     test_labels = test_labels[:test_samples * seq_length, :]
 
-    train_data = np.array(np.split(train_data, train_samples))
-    test_data = np.array(np.split(test_data, test_samples))
-    train_labels = np.array(np.split(train_labels, train_samples))
-    test_labels = np.array(np.split(test_labels, test_samples))
-
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, batch_size)
     seq2seq = Seq2Labels(seq_length, hidden_units, bottleneck_size, input_size,
-                         output_size, layers, nb_samples, update_prior=True)
+                         output_size, layers, nb_samples, 16, update_prior=True)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name,
                                     reduce_seq=True)
     best_loss = None
@@ -67,11 +63,13 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
 
-        # if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
-        #     train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
-        #     test_samples = learner.sample_sequence(test_data[:NB_SAMPLES])
-        #     print(train_samples)
-        #     print(test_samples)
+        if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
+            train_samples = learner.predict_sequence(
+                train_data[:predicted_samples], train_labels[:predicted_samples])
+            test_samples = learner.predict_sequence(
+                test_data[:predicted_samples], test_labels[:predicted_samples])
+            print(train_samples)
+            print(test_samples)
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)
