@@ -281,8 +281,8 @@ Samples = 12
 Rate = 2*10^-5
 
 - Beta = 0, 1502280230
-Loss: 1.846
-Accuracy: 29
+Loss: 1.845
+Accuracy: 29.43
 
 
 ## Sigma
