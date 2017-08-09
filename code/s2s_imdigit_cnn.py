@@ -17,7 +17,7 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
          epochs, hidden_units, bottleneck_size, label_selected, batch_size,
          save_checkpoints, nb_samples, update_marginal):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
-    run_name = 's2s_imdigit_' + str(int(time.time()))
+    run_name = 's2s_imdigitcnn_' + str(int(time.time()))
     batch_size = batch_size * seq_length
     predicted_samples = NB_PRED_SAMPLES * seq_length
 
