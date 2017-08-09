@@ -266,8 +266,8 @@ Accuracy: 33.77
 Loss: 1.8741
 
 - Beta = 10^-4
-Accuracy: 
-Loss: 
+Accuracy: 33.76
+Loss: 1.8779
 
 ## Seq2Labels CNN
 # 1
