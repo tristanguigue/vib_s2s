@@ -247,7 +247,7 @@ Accuracy: 33.81
 Loss: 1.885
 
 
-# 2
+# 3
 Length = 5
 Train = All
 Test = All
@@ -269,6 +269,10 @@ Loss: 1.8741
 Accuracy: 33.76
 Loss: 1.8779
 
+- Beta = 10^-2
+Accuracy: 33.58
+Loss: 1.895
+
 ## Seq2Labels CNN
 # 1
 Length = 5
@@ -283,7 +287,27 @@ Rate = 2*10^-5
 - Beta = 0, 1502280230
 Loss: 1.845
 Accuracy: 29.43
+Overfit: No
 
+## Seq2Label
+# 1 
+Length = 5
+Train = All
+Test = All
+Hidden = 128
+Bottleneck = 32
+Batch = 500
+Samples = 12
+Rate = 10^-4
+
+- Beta = 0
+Loss: 0.313
+Accuracy: 93.95
+Overfit: Yes
+
+- Beta = 10^-3
+Loss: 0.27
+Accuracy: 94.80
 
 ## Sigma
 ### 1
