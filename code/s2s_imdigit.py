@@ -112,9 +112,9 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')
     parser.add_argument('--hidden1', type=int, default=128,
-                        help='hidden units')
+                        help='hidden units of encoder')
     parser.add_argument('--hidden2', type=int, default=16,
-                        help='hidden units')
+                        help='hidden units of decoder')
     parser.add_argument('--bottleneck', type=int, default=32,
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
