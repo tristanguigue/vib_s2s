@@ -427,7 +427,7 @@ class Seq2LabelsCNN(StochasticNetwork):
 
         first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
         new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
-        new_state = tf.reshape(new_state, [nb_layers, 2, -1, hidden_size])
+        new_state = tf.reshape(new_state, [nb_layers, 2, -1, hidden_size2])
         new_state = tf.unstack(new_state)
         new_state = tuple(
             [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
@@ -436,7 +436,7 @@ class Seq2LabelsCNN(StochasticNetwork):
         with tf.variable_scope('pred_rnn'):
             pred_outputs, pred_state = tf.nn.dynamic_rnn(
                 second_stack, y_true, initial_state=new_state, dtype=tf.float32)
-            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
+            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size2])
             seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
             seq_logits = tf.reshape(seq_logits, [-1, seq_size, output_size])
             self.output = tf.concat([tf.expand_dims(first_logits, 1), seq_logits[:, :-1, :]], 1)
