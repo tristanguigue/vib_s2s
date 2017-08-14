@@ -228,7 +228,7 @@ Loss: 1.8775
 Accuracy: 32.96
 Loss: 1.893
 
-# 2
+# 2 Smaller learning rate
 Length = 5
 Train = All
 Test = All
@@ -247,7 +247,7 @@ Accuracy: 33.81
 Loss: 1.885
 
 
-# 3
+# 3 Larger Batch
 Length = 5
 Train = All
 Test = All
@@ -273,7 +273,7 @@ Loss: 1.8779
 Accuracy: 33.58
 Loss: 1.895
 
-# 4
+# 4 Varying bottleneck and decoder hidden units
 Length = 5
 Train = All
 Test = All
@@ -301,6 +301,29 @@ Accuracy: 33.07
 - Beta = 10^-2, bottleneck = 8, hidden2 = 8
 Loss: 1.887
 Accuracy: 32.89
+
+- Beta = 10^-3, bottleneck = 16, hidden2 = 8
+Loss: 1.884
+Accuracy: 31.709
+
+# 5 Longer Sequence
+Length = 10
+Train = All
+Test = All
+Hidden = 128
+Bottleneck = 32
+Hidden decoder = 32
+Batch = 2000
+Samples = 12
+Rate = 2*10^-5
+
+- Beta = 0
+Loss: 2.128
+Accuracy: 22.29
+
+- Beta = 10^-3
+Loss: 2.115
+Accuracy: 22.49
 
 ## Seq2Labels CNN
 # 1

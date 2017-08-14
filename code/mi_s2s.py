@@ -54,7 +54,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
             batch_xs, _ = train_loader.next_batch()
             current_loss, loss_summary = learner.train_network(
                 batch_xs, None, learning_rate)
-            total_loss += current_loss 
+            total_loss += current_loss
 
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
 
