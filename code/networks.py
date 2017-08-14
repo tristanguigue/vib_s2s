@@ -367,7 +367,7 @@ class Seq2Labels(StochasticNetwork):
 
 
 class Seq2LabelsCNN(StochasticNetwork):
-    def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size,
+    def __init__(self, seq_size, hidden_size1, hidden_size2, bottleneck_size, input_size, output_size,
                  nb_layers, nb_samples, channels, update_prior):
         super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
@@ -375,8 +375,8 @@ class Seq2LabelsCNN(StochasticNetwork):
         img_size = int(np.sqrt(input_size))
         flat_size = int(img_size / 4) ** 2
 
-        first_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
-        second_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+        first_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size1)
+        second_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size2)
         first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
         second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 
@@ -387,9 +387,9 @@ class Seq2LabelsCNN(StochasticNetwork):
             self.y_true_digits = tf.argmax(y_true, axis=2)
 
         with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
+            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size1, bottleneck_size])
             out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
+            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size1, bottleneck_size])
             out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
 
         with tf.name_scope('decoder'):
@@ -398,12 +398,12 @@ class Seq2LabelsCNN(StochasticNetwork):
             dec_biases_first_input = self.bias_variable(
                 'dec_biases_first_input', [self.output_size])
             dec_weights_state = self.weight_variable(
-                'dec_weights_state', [bottleneck_size, 2 * hidden_size * nb_layers])
+                'dec_weights_state', [bottleneck_size, 2 * hidden_size2 * nb_layers])
             dec_biases_state = self.bias_variable(
-                'dec_biases_state', [2 * hidden_size * nb_layers])
+                'dec_biases_state', [2 * hidden_size2 * nb_layers])
 
         with tf.name_scope('rnn_output'):
-            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size, output_size])
+            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size2, output_size])
             rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
 
         x_image = tf.reshape(self.x, [-1, img_size, img_size, 1])
