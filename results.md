@@ -295,10 +295,12 @@ Loss: 1.88
 Accuracy: 33.43
 
 - Beta = 10^-3, bottleneck = 8, hidden2 = 8
-Loss:
-Accuracy:
+Loss: 1.884
+Accuracy: 33.07
 
-
+- Beta = 10^-2, bottleneck = 8, hidden2 = 8
+Loss: 1.887
+Accuracy: 32.89
 
 ## Seq2Labels CNN
 # 1
