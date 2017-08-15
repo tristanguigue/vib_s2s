@@ -325,6 +325,38 @@ Accuracy: 22.29
 Loss: 2.115
 Accuracy: 22.49
 
+# 6 Updating marginal
+Length = 5
+Train = All
+Test = All
+Hidden = 128
+Bottleneck = 32
+Hidden decoder = 32
+Batch = 2000
+Samples = 12
+Rate = 2*10^-5
+Update marginal = True
+
+- Beta = 10^-3
+Loss: 1.87
+Accuracy: 33.11
+
+# 7 Larger Hidden state
+Length = 5
+Train = All
+Test = All
+Hidden = 256
+Bottleneck = 16
+Hidden decoder = 16
+Batch = 2000
+Samples = 12
+Rate = 2*10^-5
+Update marginal = False
+
+- Beta = 10^-3
+Loss: 1.869
+Accuracy: 32.88
+
 ## Seq2Labels CNN
 # 1
 Length = 5
@@ -340,6 +372,10 @@ Rate = 2*10^-5
 Loss: 1.845
 Accuracy: 29.43
 Overfit: No
+
+- Beta = 10^-3
+Loss:
+Accuracy: 
 
 ## Seq2Label
 # 1 

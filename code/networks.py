@@ -146,7 +146,7 @@ class StochasticRNN(StochasticNetwork):
 
 
 class Seq2Seq(StochasticNetwork):
-    def __init__(self, partial_seq_size, output_seq_size, hidden_size,
+    def __init__(self, partial_seq_size, output_seq_size, hidden_size1, hidden_size2,
                  bottleneck_size, output_size, nb_layers, nb_samples, update_prior,
                  binary=True):
         super().__init__(bottleneck_size, update_prior)
@@ -155,8 +155,8 @@ class Seq2Seq(StochasticNetwork):
         self.output_size = output_size
         seq_size = partial_seq_size + output_seq_size
 
-        first_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
-        second_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+        first_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size1)
+        second_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size2)
         first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
         second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 
@@ -172,19 +172,19 @@ class Seq2Seq(StochasticNetwork):
             self.y_true = tf.squeeze(true_seq)
 
         with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
+            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size1, bottleneck_size])
             out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
+            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size1, bottleneck_size])
             out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
 
         with tf.name_scope('decoder'):
             decoder_weights = self.weight_variable(
-                'decoder_weights', [bottleneck_size, self.output_size + 2 * hidden_size * nb_layers])
+                'decoder_weights', [bottleneck_size, self.output_size + 2 * hidden_size2 * nb_layers])
             decoder_biases = self.bias_variable(
-                'decoder_biases', [self.output_size + 2 * hidden_size * nb_layers])
+                'decoder_biases', [self.output_size + 2 * hidden_size2 * nb_layers])
 
         with tf.name_scope('rnn_output'):
-            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size, output_size])
+            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size2, output_size])
             rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
 
         with tf.variable_scope('rnn'):
@@ -204,7 +204,7 @@ class Seq2Seq(StochasticNetwork):
         first_logits = decoder_output[:, :output_size]
 
         new_state = decoder_output[:, output_size:]
-        new_state = tf.reshape(new_state, [nb_layers, 2, -1, hidden_size])
+        new_state = tf.reshape(new_state, [nb_layers, 2, -1, hidden_size2])
         new_state = tf.unstack(new_state)
         new_state = tuple(
             [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
@@ -213,7 +213,7 @@ class Seq2Seq(StochasticNetwork):
         with tf.variable_scope('pred_rnn'):
             pred_outputs, pred_state = tf.nn.dynamic_rnn(
                 second_stack, true_seq, initial_state=new_state, dtype=tf.float32)
-            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size])
+            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size2])
             seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
             seq_logits = tf.reshape(seq_logits, [-1, output_seq_size])
             self.output = tf.concat([first_logits, seq_logits[:, :-1]], 1)

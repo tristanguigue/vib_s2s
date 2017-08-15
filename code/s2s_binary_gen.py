@@ -1,12 +1,12 @@
-from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Seq
 from learners import SupervisedLossLearner
 from tools import Batcher
 import argparse
 import time
 import os
+import numpy as np
 
-DATA_DIR = '/tmp/tensorflow/mnist/input_data'
+DATA_DIR = 'data/binary_samples10000_s60.npy'
 CHECKPOINT_PATH = 'checkpoints/'
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 SAMPLE_EVERY = 100
@@ -16,24 +16,16 @@ NB_SAMPLES = 4
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
          epochs, hidden1_units, hidden2_units, bottleneck_size, label_selected, batch_size,
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
-    mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
-    if not partial_seq_length:
-        partial_seq_length = mnist.train.images.shape[1]
-    run_name = 's2s_mnist_' + str(int(time.time()))
+    data = np.load(DIR + DATA_DIR)
+    train_data = data[:train_samples]
+    test_data = data[train_samples:test_samples + test_samples]
 
-    train_data = mnist.train.images
-    test_data = mnist.test.images
-    if label_selected:
-        train_data = mnist.train.images[mnist.train.labels == label_selected]
-        test_data = mnist.test.images[mnist.test.labels == label_selected]
-    if train_samples:
-        train_data = train_data[:train_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
-    else:
-        train_data = train_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
-    if test_samples:
-        test_data = test_data[:test_samples, start_pos:start_pos + partial_seq_length + output_seq_size]
-    else:
-        test_data = test_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
+    if not partial_seq_length:
+        partial_seq_length = train_data.shape[1] - output_seq_size
+    run_name = 's2s_binary_gen_' + str(int(time.time()))
+
+    train_data = train_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
+    test_data = test_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
 
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
