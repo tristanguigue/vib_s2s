@@ -18,7 +18,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
     data = np.load(DIR + DATA_DIR)
     train_data = data[:train_samples]
-    test_data = data[train_samples:test_samples + test_samples]
+    test_data = data[train_samples:train_samples + test_samples]
 
     if not partial_seq_length:
         partial_seq_length = train_data.shape[1] - output_seq_size
