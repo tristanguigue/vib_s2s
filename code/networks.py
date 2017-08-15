@@ -354,9 +354,8 @@ class Seq2Labels(StochasticNetwork):
                 for l in range(nb_layers)])
 
         with tf.variable_scope('pred_rnn'):
-            dec_inputs = tf.cast(tf.expand_dims(self.y_true_digits, 2), tf.float32)
             pred_outputs, pred_state = tf.nn.dynamic_rnn(
-                second_stack, dec_inputs, initial_state=new_state, dtype=tf.float32)
+                second_stack, self.y_true, initial_state=new_state, dtype=tf.float32)
             flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size2])
             seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
             seq_logits = tf.reshape(seq_logits, [-1, seq_size, output_size])

@@ -39,7 +39,7 @@ Accuracy: 99.10
 
 
 ## Seq2Seq Binary
-### 1 Small dataset, IB works
+### 1 Small dataset *Works*
 Start = 0
 Length = 261
 Hidden = 64
@@ -205,6 +205,25 @@ Overfit: No
 - Beta = 10^-3, 1502196521
 Loss = 
 
+## Seq2Seq Binary Generated
+#1
+Length = 60
+Train = 5k
+Test = 2k
+Hidden = 128
+Bottleneck = 32
+Batch = 500
+Samples = 12
+
+- Beta = 0
+Loss: 0.444
+Accuracy: 82.36
+Overfit: Yes
+
+- Beta = 10^-3
+Loss: 0.451
+Accuracy: 82.03
+
 ## Seq2Labels
 # 1
 Length = 5
@@ -247,7 +266,7 @@ Accuracy: 33.81
 Loss: 1.885
 
 
-# 3 Larger Batch
+# 3 Larger Batch *Works*
 Length = 5
 Train = All
 Test = All
@@ -273,7 +292,7 @@ Loss: 1.8779
 Accuracy: 33.58
 Loss: 1.895
 
-# 4 Varying bottleneck and decoder hidden units
+# 4 Varying bottleneck and decoder hidden units *Works*
 Length = 5
 Train = All
 Test = All
@@ -306,7 +325,7 @@ Accuracy: 32.89
 Loss: 1.884
 Accuracy: 31.709
 
-# 5 Longer Sequence
+# 5 Longer Sequence *Works*
 Length = 10
 Train = All
 Test = All
@@ -357,6 +376,18 @@ Update marginal = False
 Loss: 1.869
 Accuracy: 32.88
 
+# 8 Feeding scalar input instead of one hot for decoder
+Length = 5
+Train = All
+Test = All
+Hidden = 128
+Batch = 2000
+Samples = 12
+Rate = 3*10^-5
+Bottleneck = 16
+Hidden2 = 16
+
+
 ## Seq2Labels CNN
 # 1
 Length = 5
@@ -374,8 +405,8 @@ Accuracy: 29.43
 Overfit: No
 
 - Beta = 10^-3
-Loss:
-Accuracy: 
+Loss:1.848
+Accuracy:  29.27
 
 ## Seq2Label
 # 1 
