@@ -303,8 +303,8 @@ class Seq2Labels(StochasticNetwork):
         self.seq_size = seq_size
         self.output_size = output_size
 
-        first_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size1)
-        second_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size2)
+        first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
+        second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
         first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
         second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 

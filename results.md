@@ -360,11 +360,10 @@ Update marginal = True
 Loss: 1.87
 Accuracy: 33.11
 
-# 7 Larger Hidden state
+# 7 Varying Hidden state
 Length = 5
 Train = All
 Test = All
-Hidden = 256
 Bottleneck = 16
 Hidden decoder = 16
 Batch = 2000
@@ -372,9 +371,13 @@ Samples = 12
 Rate = 2*10^-5
 Update marginal = False
 
-- Beta = 10^-3
+- Beta = 10^-3, Hidden = 256
 Loss: 1.869
 Accuracy: 32.88
+
+- Beta = 0, Hidden = 64
+Loss: 1.901
+Accuracy: 32.71
 
 # 8 Feeding scalar input instead of one hot for decoder
 Length = 5
