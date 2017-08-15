@@ -155,8 +155,8 @@ class Seq2Seq(StochasticNetwork):
         self.output_size = output_size
         seq_size = partial_seq_size + output_seq_size
 
-        first_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size1)
-        second_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size2)
+        first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
+        second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
         first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
         second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 
@@ -178,10 +178,14 @@ class Seq2Seq(StochasticNetwork):
             out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
 
         with tf.name_scope('decoder'):
-            decoder_weights = self.weight_variable(
-                'decoder_weights', [bottleneck_size, self.output_size + 2 * hidden_size2 * nb_layers])
-            decoder_biases = self.bias_variable(
-                'decoder_biases', [self.output_size + 2 * hidden_size2 * nb_layers])
+            dec_weights_first_input = self.weight_variable(
+                'dec_weights_first_input', [bottleneck_size, self.output_size])
+            dec_biases_first_input = self.bias_variable(
+                'dec_biases_first_input', [self.output_size])
+            dec_weights_state = self.weight_variable(
+                'dec_weights_state', [bottleneck_size, hidden_size2 * nb_layers])
+            dec_biases_state = self.bias_variable(
+                'dec_biases_state', [hidden_size2 * nb_layers])
 
         with tf.name_scope('rnn_output'):
             rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size2, output_size])
@@ -200,15 +204,10 @@ class Seq2Seq(StochasticNetwork):
 
         z = self.mu + tf.multiply(self.sigma, epsilon)
 
-        decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
-        first_logits = decoder_output[:, :output_size]
-
-        new_state = decoder_output[:, output_size:]
-        new_state = tf.reshape(new_state, [nb_layers, 2, -1, hidden_size2])
-        new_state = tf.unstack(new_state)
-        new_state = tuple(
-            [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
-                for l in range(nb_layers)])
+        first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
+        new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
+        new_state = tf.reshape(new_state, [nb_layers, -1, hidden_size2])
+        new_state = tuple(tf.unstack(new_state))
 
         with tf.variable_scope('pred_rnn'):
             pred_outputs, pred_state = tf.nn.dynamic_rnn(
@@ -259,7 +258,7 @@ class Seq2Label(StochasticNetwork):
         self.seq_size = seq_size
         self.output_size = output_size
 
-        cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
+        cell = tf.contrib.rnn.GRUCell(hidden_size)
         stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
 
         with tf.name_scope('input'):
@@ -348,8 +347,7 @@ class Seq2Labels(StochasticNetwork):
         first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
         new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
         new_state = tf.reshape(new_state, [nb_layers, -1, hidden_size2])
-        new_state = tf.unstack(new_state)
-        new_state = tuple([new_state[l] for l in range(nb_layers)])
+        new_state = tuple(tf.unstack(new_state))
 
         with tf.variable_scope('pred_rnn'):
             pred_outputs, pred_state = tf.nn.dynamic_rnn(
@@ -373,8 +371,8 @@ class Seq2LabelsCNN(StochasticNetwork):
         img_size = int(np.sqrt(input_size))
         flat_size = int(img_size / 4) ** 2
 
-        first_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size1)
-        second_cell = tf.contrib.rnn.BasicLSTMCell(hidden_size2)
+        first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
+        second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
         first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
         second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 
@@ -396,9 +394,9 @@ class Seq2LabelsCNN(StochasticNetwork):
             dec_biases_first_input = self.bias_variable(
                 'dec_biases_first_input', [self.output_size])
             dec_weights_state = self.weight_variable(
-                'dec_weights_state', [bottleneck_size, 2 * hidden_size2 * nb_layers])
+                'dec_weights_state', [bottleneck_size, hidden_size2 * nb_layers])
             dec_biases_state = self.bias_variable(
-                'dec_biases_state', [2 * hidden_size2 * nb_layers])
+                'dec_biases_state', [hidden_size2 * nb_layers])
 
         with tf.name_scope('rnn_output'):
             rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size2, output_size])
@@ -425,11 +423,8 @@ class Seq2LabelsCNN(StochasticNetwork):
 
         first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
         new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
-        new_state = tf.reshape(new_state, [nb_layers, 2, -1, hidden_size2])
-        new_state = tf.unstack(new_state)
-        new_state = tuple(
-            [tf.contrib.rnn.LSTMStateTuple(new_state[l][0], new_state[l][1])
-                for l in range(nb_layers)])
+        new_state = tf.reshape(new_state, [nb_layers, -1, hidden_size2])
+        new_state = tuple(tf.unstack(new_state))
 
         with tf.variable_scope('pred_rnn'):
             pred_outputs, pred_state = tf.nn.dynamic_rnn(
