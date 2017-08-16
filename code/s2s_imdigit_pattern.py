@@ -4,8 +4,8 @@ from learners import SupervisedLossLearner
 from tools import Batcher
 import argparse
 import time
-import pandas as pd
 import os
+import numpy as np
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 CHECKPOINT_PATH = 'checkpoints/'
@@ -24,55 +24,37 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     input_size = mnist.train.images.shape[1]
     output_size = mnist_onehot.train.labels.shape[1]
 
+    train_data = mnist.train.images
+    test_data = mnist.test.images
+
     if not train_samples:
-        train_samples = int(mnist.train.images.shape[0] / seq_length)
+        train_samples = int(train_data.shape[0] / seq_length)
     if not test_samples:
-        test_samples = int(mnist.test.images.shape[0] / seq_length)
+        test_samples = int(test_data.shape[0] / seq_length)
+    train_data = train_data[:train_samples * seq_length, :]
+    test_data = test_data[:test_samples * seq_length, :]
+    train_labels = mnist.train.labels[:train_samples * seq_length]
+    train_labels_onehot = mnist_onehot.train.labels[:train_samples * seq_length]
+    test_labels = mnist.test.labels[:test_samples * seq_length]
+    test_labels_onehot = mnist_onehot.test.labels[:test_samples * seq_length]
 
-    import numpy as np
-    flat_train_labels = np.random.randint(0, 9, size=train_samples * seq_length)
-    train_labels = np.reshape(flat_train_labels, [-1, seq_length])
-    counts = pd.Series(flat_train_labels)
-    counts = counts.groupby(counts).cumcount().as_matrix()
+    train_data = np.reshape(train_data, [-1, seq_length, input_size])
+    test_data = np.reshape(test_data, [-1, seq_length, input_size])
+    train_labels = np.reshape(train_labels, [-1, seq_length])
+    test_labels = np.reshape(test_labels, [-1, seq_length])
+    train_labels_onehot = np.reshape(train_labels_onehot, [-1, seq_length, output_size])
+    test_labels_onehot = np.reshape(test_labels_onehot, [-1, seq_length, output_size])
 
-    train_data = []
-    from collections import defaultdict
-    current_indices = defaultdict(int)
-    for i in range(train_samples):
-        train_data.append(mnist.train.images[mnist.train.labels == flat_train_labels[i]][counts[i]])
+    ids = np.expand_dims(np.arange(test_samples), 1)
+    indices = np.argsort(test_labels, axis=1)
+    print(test_labels_onehot.shape)
+    test_labels = test_labels_onehot[ids, indices, :]
+    test_data = test_data[ids, indices, :]
 
-        print(train_data)
-        exit()
-
-    # test_data = []
-    # test_labels = []
-    # current_indices = defaultdict(int)
-    # for i in range(test_samples):
-    #     init_digit = randint(0, 9)
-    #     seq = []
-    #     labels = []
-    #     for d in range(seq_length):
-    #         digit = init_digit + d % 10
-    #         seq.append(mnist.test.images[mnist.test.labels == digit][current_indices[digit]])
-    #         labels.append(digit)
-    #         current_indices[digit] += 1
-    #     test_data.append(seq)
-    #     test_labels.append(labels)
-
-    # print(train_data)
-    # print(test_data)
-    # exit()
-
-
-    # train_data = train_data[:train_samples * seq_length, :]
-    # test_data = test_data[:test_samples * seq_length, :]
-    # train_labels = train_labels[:train_samples * seq_length, :]
-    # test_labels = test_labels[:test_samples * seq_length, :]
-
-    # train_data = np.array(np.split(train_data, train_samples))
-    # test_data = np.array(np.split(test_data, test_samples))
-    # train_labels = np.array(np.split(train_labels, train_samples))
-    # test_labels = np.array(np.split(test_labels, test_samples))
+    ids = np.expand_dims(np.arange(train_samples), 1)
+    indices = np.argsort(train_labels, axis=1)
+    train_labels = train_labels_onehot[ids, indices, :]
+    train_data = train_data[ids, indices, :]
 
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, batch_size)
