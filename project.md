@@ -72,7 +72,8 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 - Try predict next 15 pixels, do with MNIST (half of image to train)
 - Try concatenating the output of the sequence
 - More data, longer seq size
-- Try again with continuous, for example with cubic pattern from initial point drawn from gaussian and test from initial point far away
+- Try again with continuous, for example with cubic pattern from initial point drawn from gaussian and test from initial
+point far away
 - Use smaller bottleneck!
 
 # July 25th
@@ -102,6 +103,17 @@ beta = 0: 0.448, beta = 10^-2: 0.417
 - Seq2Labels and Seq2Label work
 - CNN does not give better result
 
+# August 16th
+- GRU gives much better result but only accuracy improves with IB
+- Try using pattern for digits
+- Try using K fold cross validation or average results
+- Ideas for real data
+    - Try finding s2s benchmark
+    - Video: multilabel (using fusion CNN then RNN)
+    - Image: multilabel (CNN then RNN)
+    - Translation without attention
+    - Generate video with simple shapes (triangle, square): indicate if object was present or not and number of timesteps
+    it was present
 
 
 

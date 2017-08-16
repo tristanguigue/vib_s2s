@@ -38,7 +38,7 @@ Accuracy: 99.10
 - Beta = 10^-2, 1502045656 (not finished)
 
 
-## Seq2Seq Binary
+## Seq2Seq MNIST Binary
 ### 1 Small dataset *Works*
 Start = 0
 Length = 261
@@ -167,10 +167,7 @@ Bottleneck = 64
 Batch = 512
 Samples = 12
 
-- Beta=0
-Loss: 0.1450
-Accuracy: 94.84
-Overfit: No
+- Beta=0: 94.84, 0.1450, no overfit
 
 # 8 1k data
 Length = 60
@@ -182,11 +179,19 @@ Bottleneck = 64
 Batch = 500
 Samples = 12
 
-- Beta=0
-Loss: 0.1525
-Accuracy: 94.75
-Overfit: No
+- Beta=0: 94.75, 0.1525, no overfit
 
+#9 GRU
+Length = 60
+Start = 300
+Train = All
+Test = All
+Hidden = 128
+Bottleneck = 32
+Batch = 1000
+Samples = 12
+
+- Beta=0: 97.47, 0.0609, no overfit
 
 ## Seq2seq Continous
 # 1 Cubic + sinusoidal + noise
@@ -203,7 +208,6 @@ Loss = 0.0493
 Overfit: No
 
 - Beta = 10^-3, 1502196521
-Loss = 
 
 ## Seq2Seq Binary Generated
 #1
@@ -379,7 +383,7 @@ Accuracy: 32.88
 Loss: 1.901
 Accuracy: 32.71
 
-# 8 Feeding scalar input instead of one hot for decoder
+# 8 GRU
 Length = 5
 Train = All
 Test = All
@@ -390,6 +394,13 @@ Rate = 3*10^-5
 Bottleneck = 16
 Hidden2 = 16
 
+- Beta 0: 69.55, 0.936| 66.93, 1.008
+- Beta 10^-4: 68.07, 0.99
+- Beta 5.10^-4: 68.77, 1.03
+- Beta 10^-3: 73.55, 0.9555 | 69.549, 1.037
+- Beta: 2.10^-3: 
+- Beta: 5.10^-3: 70.72, 1.136
+- Beta 10^-2: 68.3, 1.26
 
 ## Seq2Labels CNN
 # 1
