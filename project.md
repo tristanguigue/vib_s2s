@@ -115,5 +115,7 @@ point far away
     - Generate video with simple shapes (triangle, square): indicate if object was present or not and number of timesteps
     it was present
 
-
+# August 20th
+- Try using NN for decoder q(y|z)
+- Try CNN again
 

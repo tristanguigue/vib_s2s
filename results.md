@@ -191,7 +191,8 @@ Bottleneck = 32
 Batch = 1000
 Samples = 12
 
-- Beta=0: 97.47, 0.0609, no overfit
+- Beta=0: 97.53, 0.059, no clear overfit (2323 epochs)
+- Beta=10^-3:  97.498, 0.063
 
 ## Seq2seq Continous
 # 1 Cubic + sinusoidal + noise
@@ -203,10 +204,7 @@ Bottleneck = 32
 Batch = 500
 Samples = 12
 
-- Beta = 0, 1502184709
-Loss = 0.0493
-Overfit: No
-
+- Beta = 0, 1502184709: 0.0493, no overfit
 - Beta = 10^-3, 1502196521
 
 ## Seq2Seq Binary Generated
@@ -218,15 +216,8 @@ Hidden = 128
 Bottleneck = 32
 Batch = 500
 Samples = 12
-
-- Beta = 0
-Loss: 0.444
-Accuracy: 82.36
-Overfit: Yes
-
-- Beta = 10^-3
-Loss: 0.451
-Accuracy: 82.03
+- Beta = 0: 82.36, 0.444, overfit yes
+- Beta = 10^-3: 82.03, 0.451
 
 ## Seq2Labels
 # 1
@@ -238,18 +229,9 @@ Bottleneck = 32
 Batch = 500
 Samples = 12
 Rate = 10^-4
-
-- Beta= 10^-4, 1502264047
-Accuracy: 33.79
-Loss: 1.880
-
-- Beta = 10^-3, 1502222038
-Accuracy: 33.569
-Loss: 1.8775
-
-- Beta = 10^-2, 1502237492
-Accuracy: 32.96
-Loss: 1.893
+- Beta= 10^-4, 1502264047: 33.79, 1.880
+- Beta = 10^-3, 1502222038: 33.569, 1.8775
+- Beta = 10^-2, 1502237492: 32.96, 1.893
 
 # 2 Smaller learning rate
 Length = 5
@@ -260,14 +242,8 @@ Bottleneck = 32
 Batch = 500
 Samples = 12
 Rate = 2*10^-5
-
-- Beta = 0, 1502265059
-Accuracy: 33.80
-Loss: 1.889
-
-- Beta= 10^-4, 1502269300
-Accuracy: 33.81
-Loss: 1.885
+- Beta = 0, 1502265059: 33.80, 1.889
+- Beta= 10^-4, 1502269300: 33.81, 1.885
 
 
 # 3 Larger Batch *Works*
@@ -279,22 +255,10 @@ Bottleneck = 32
 Batch = 2000
 Samples = 12
 Rate = 2*10^-5
-
-- Beta=0
-Accuracy: 33.33
-Loss: 1.893
-
-- Beta = 10^-3
-Accuracy: 33.77
-Loss: 1.8741
-
-- Beta = 10^-4
-Accuracy: 33.76
-Loss: 1.8779
-
-- Beta = 10^-2
-Accuracy: 33.58
-Loss: 1.895
+- Beta=0: 33.33, 1.893
+- Beta = 10^-3: 33.77, 1.8741
+- Beta = 10^-4: 33.76, 1.8779
+- Beta = 10^-2: 33.58, 1.895
 
 # 4 Varying bottleneck and decoder hidden units *Works*
 Length = 5
@@ -304,30 +268,12 @@ Hidden = 128
 Batch = 2000
 Samples = 12
 Rate = 2*10^-5
-
-- Beta = 0, bottleneck = 16, hidden2 = 16
-Loss: 1.896
-Accuracy: 32.88
-
-- Beta = 10^-3, bottleneck = 16, hidden2 = 16
-Loss: 1.871
-Accuracy: 33.94
-
-- Beta = 10^-3, bottleneck = 32, hidden2 = 16
-Loss: 1.88
-Accuracy: 33.43
-
-- Beta = 10^-3, bottleneck = 8, hidden2 = 8
-Loss: 1.884
-Accuracy: 33.07
-
-- Beta = 10^-2, bottleneck = 8, hidden2 = 8
-Loss: 1.887
-Accuracy: 32.89
-
-- Beta = 10^-3, bottleneck = 16, hidden2 = 8
-Loss: 1.884
-Accuracy: 31.709
+- Beta = 0, bottleneck = 16, hidden2 = 16: 1.896, 32.88
+- Beta = 10^-3, bottleneck = 16, hidden2 = 16: 1.871, 33.94
+- Beta = 10^-3, bottleneck = 32, hidden2 = 16: 1.88, 33.43
+- Beta = 10^-3, bottleneck = 8, hidden2 = 8: 1.884, 33.07
+- Beta = 10^-2, bottleneck = 8, hidden2 = 8: 1.887, 32.89
+- Beta = 10^-3, bottleneck = 16, hidden2 = 8: 1.884, 31.709
 
 # 5 Longer Sequence *Works*
 Length = 10
@@ -339,14 +285,8 @@ Hidden decoder = 32
 Batch = 2000
 Samples = 12
 Rate = 2*10^-5
-
-- Beta = 0
-Loss: 2.128
-Accuracy: 22.29
-
-- Beta = 10^-3
-Loss: 2.115
-Accuracy: 22.49
+- Beta = 0: 2.128, 22.29
+- Beta = 10^-3: 2.115, 22.49
 
 # 6 Updating marginal
 Length = 5
@@ -359,10 +299,7 @@ Batch = 2000
 Samples = 12
 Rate = 2*10^-5
 Update marginal = True
-
-- Beta = 10^-3
-Loss: 1.87
-Accuracy: 33.11
+- Beta = 10^-3: 1.87, 33.11
 
 # 7 Varying Hidden state
 Length = 5
@@ -374,14 +311,8 @@ Batch = 2000
 Samples = 12
 Rate = 2*10^-5
 Update marginal = False
-
-- Beta = 10^-3, Hidden = 256
-Loss: 1.869
-Accuracy: 32.88
-
-- Beta = 0, Hidden = 64
-Loss: 1.901
-Accuracy: 32.71
+- Beta = 10^-3, Hidden = 256: 1.869, 32.88
+- Beta = 0, Hidden = 64: 1.901, 32.71
 
 # 8 GRU
 Length = 5
@@ -393,7 +324,6 @@ Samples = 12
 Rate = 3*10^-5
 Bottleneck = 16
 Hidden2 = 16
-
 - Beta 0: 69.55, 0.936| 66.93, 1.008
 - Beta 10^-4: 68.07, 0.99
 - Beta 5.10^-4: 68.77, 1.03
@@ -401,6 +331,20 @@ Hidden2 = 16
 - Beta: 2.10^-3: 
 - Beta: 5.10^-3: 70.72, 1.136
 - Beta 10^-2: 68.3, 1.26
+
+# 9 GRU Larger bottleneck
+Length = 5
+Train = All
+Test = All
+Batch = 2000
+Samples = 12
+Rate = 3*10^-5
+- Hidden = 128, bottleneck = 32, hidden2 = 32
+    - Beta=0: 79.93, 0.669
+    - Beta=10^-3: 81.78, 0.742
+- Hidden = 256, bottleneck = 128, hidden2 = 126
+    - Beta=0: 87.38, 0.439
+    - Beta=10^-3: 91.1, 0.502
 
 ## Seq2Labels CNN
 # 1
@@ -432,15 +376,8 @@ Bottleneck = 32
 Batch = 500
 Samples = 12
 Rate = 10^-4
-
-- Beta = 0
-Loss: 0.313
-Accuracy: 93.95
-Overfit: Yes
-
-- Beta = 10^-3
-Loss: 0.27
-Accuracy: 95.35
+- Beta = 0: 0.313, 93.95, yes overfit
+- Beta = 10^-3: 0.27, 95.35
 
 ## Sigma
 ### 1
