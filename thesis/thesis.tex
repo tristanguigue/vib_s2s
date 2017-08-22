@@ -367,8 +367,9 @@ Where:
 \item  $\sigma_g$ is the sigmoid function
 \item $\sigma_h$ is a hyperbolic tangent
 \end{itemize}
+
 %------------------------------------------------------------------------------------------------
-\chapter{Further Considerations}
+\chapter{Theoretical Results}
 \section{Mutual Information and Maximum Likelihood in Supervised Setting}
 
 We consider the simplest graphical model in a supervised learning setting:
@@ -708,8 +709,7 @@ Whose lower bound objective under the variational approximation becomes:
  $$ J_{VIB} = \frac{1}{N}  \sum_{n=1}^{N} \mathbb{E}_{\epsilon \sim p(\epsilon)}[- \log q(y_{n} |f(x_{1:T, n}, \epsilon))] + \beta KL[p(Z|x_{1:T, n}), r(Z)]$$
 
 \subsection{Sequence to Sequence}
-Sequence to sequence problems have first been used in the context of recurrent neural network by Sutskever \cite{s2s}.
-
+Sequence to sequence problems have first been used in the context of recurrent neural network by Sutskever \cite{s2s}. They are especially useful for translation. The original model compress the whole input sequence into a hidden states from which the output sequence is generated. This makes it a good candidate for the information bottleneck framework as pulling as relevant representation of the input is crucial to be able to generate the right output sequence. Recent model have included attention \cite{attention} or other external memory mechanism to go around this bottleneck.
 
 \begin{figure}[H]
 \centering
@@ -723,6 +723,7 @@ Sequence to sequence problems have first been used in the context of recurrent n
 \caption{Sequence to sequence variational information bottleneck graphical model}
 \end{figure}
 
+The graphical model of this problem is also similar to the original information bottleneck graphical model if we consider the input and output sequences as random variables. Representing the hidden states of the graphical model we get: 
 
 \begin{figure}[H]
 \centering
@@ -773,44 +774,44 @@ Whose lower bound objective under the variational approximation becomes:
 \chapter{Implementation}
 \section{Stochastic encoder $p(z|x)$}
 Like in \cite{vib} we choose our encoder to be a gaussian whose mean and variance will be given by the output of a neural network:
-$$ p(z|x) \sim \mathcal{N}(z | f^\mu(x), f^\Sigma(x))$$ where $f^\mu$ and $f^\Sigma$ are neural networks / multi-layer perceptrons. The last layer of the perceptron is processed by two sets of linear weights, the first gives the mean and we apply a softplus to the second which gives the diagonal standard deviation terms.
+$$ p(z|x) \sim \mathcal{N}(z | f^\mu(x), f^\Sigma(x))$$ where $f^\mu$ and $f^\Sigma$ are multi-layer perceptrons. The last layer of the perceptron is processed by two sets of linear weights, the first gives the mean and we apply a softplus to the second which gives the diagonal standard deviation terms. The covariance is chosen to be diagonal such as to reduce the size of the output and to force the features learned to be uncorrelated.
 
-\section{Reparametrisation trick}
-Since the encoder is a gaussian we can use  $z = f(x, \epsilon) =  \mu(x) + \Sigma(x) \epsilon$ for the reparametrisation trick where $\epsilon \sim \mathcal{N}(0, I)$. 
+\paragraph{Reparametrisation trick}
+Since the encoder is a gaussian we can use  $z = f(x, \epsilon) =  f^\mu(x) + f^\Sigma(x) \epsilon$ for the reparametrisation trick where $\epsilon \sim \mathcal{N}(0, I)$. 
  
 \section{Decoder $q(y|z)$}
 For the variational approximation of $p(y|z)$ we use a simple logistic regression:
 
-$$ q(z|x) = \mathcal{S}(y|f(z))$$ where $f(z)$ is a linear transformation. and $\mathcal{S} is the softmax function.$
+$$ q(y|z) \sim \mathcal{C}(y| \mathcal{S}(Wz + b)))$$ where $\mathcal{C}$ is a categorical distribution and $\mathcal{S}$ is the softmax. To make our approximation better we could also use a neural network here. 
 
 \section{Marginal $r(z)$}
 
-As an approximation to the marginal we use $r(z) \sim \mathcal{N}(0, 1)$
+As an approximation to the marginal we can first use as a crude approximation 
+$$r(z) \sim \mathcal{N}(0, 1)$$
 
-To improve the expressiveness of the prior distribution on the latent, we allow its parameters to be learned. 
+However to improve the expressiveness of the prior distribution on the latent, we can allow its parameters to be learned. 
 
-$$p(z) \sim \mathcal{N}(\mu_p, \Sigma_p)$$
+$$r(z) \sim \mathcal{N}(\mu_r, \Sigma_r)$$
 
-The KL divergence between 2 gaussians with diagonal variance:
+In the objective function we calculate the KL divergence from $p_\theta(z|x) \sim \mathcal{N}(\mu_p, \Sigma_p)$ to $r(z) \sim \mathcal{N}(\mu_r, \Sigma_r)$. Since both are assumed to be gaussians with diagonal variance we can use:
 
 \begin{align}
-KL(\mathcal{N}_q, \mathcal{N}_p) &= \frac{1}{2}(Tr(\Sigma_p^{-1}\Sigma_q) + (\mu_p - \mu_q)^T\Sigma_p^{-1}(\mu_p - \mu_q) - k + \log\frac{|\Sigma_p|}{|\Sigma_q|})\\
-&= \frac{1}{2}(\sum_i \frac{\Sigma_{q, ii}}{\Sigma_{p, ii}} + \sum_i \frac{(\mu_{p_i} - \mu_{q, i})^2}{\Sigma_{p, ii}} - k + \log\frac{\prod \Sigma_{p, ii}}{\prod \Sigma_{q, ii}})\\
-&= \frac{1}{2}(\sum_i[ \log \Sigma_{p, ii} - \log \Sigma_{q, ii} - 1 + \frac{\Sigma_{q, ii}}{\Sigma_{p, ii}} + \frac{(\mu_{p_i} - \mu_{q, i})^2}{\Sigma_{p, ii}}]
+KL[\mathcal{N}_p| \mathcal{N}_r] &= \frac{1}{2}(Tr(\Sigma_r^{-1}\Sigma_p) + (\mu_r - \mu_p)^T\Sigma_r^{-1}(\mu_p - \mu_r) - k + \log\frac{|\Sigma_r|}{|\Sigma_p|})\\
+&= \frac{1}{2}(\sum_i \frac{\Sigma_{p, ii}}{\Sigma_{r, ii}} + \sum_i \frac{(\mu_{r_i} - \mu_{p, i})^2}{\Sigma_{r, ii}} - k + \log\frac{\prod \Sigma_{r, ii}}{\prod \Sigma_{p, ii}})\\
+&= \frac{1}{2}(\sum_i[ \log \Sigma_{r, ii} - \log \Sigma_{p, ii} - 1 + \frac{\Sigma_{p, ii}}{\Sigma_{r, ii}} + \frac{(\mu_{r_i} - \mu_{p, i})^2}{\Sigma_{r, ii}}]
 \end{align}
 
-Beforehand we had assumed a standard normal prior which gave:
+In the case where $r(z)$ is a standard normal prior we get:
 \begin{align}
-KL(\mathcal{N}_q, \mathcal{N}_0) &= \sum_i[ -\log \Sigma_{q, ii} - 1 + \Sigma_{q, ii}+ \mu_{q, i}^2]
+KL[\mathcal{N}_p | \mathcal{N}_0] &= \sum_i[ -\log \Sigma_{p, ii} - 1 + \Sigma_{p, ii}+ \mu_{p, i}^2]
 \end{align}
 
-\section{Expectation}
+\section{Monte Carlo Expectation}
 
-In the lower bound we have to take an expectation with respect $p(\epsilon)$. To do so we take S Monte Carlo samples 
+In the lower bound we have to take an expectation with respect $p(\epsilon)$. To do so we take S Monte Carlo samples: 
  $$ \mathbb{E}_{\epsilon \sim p(\epsilon)}[- \log q(y_{n} |f(x_{n}, \epsilon))] \approx \frac{1}{S}\sum_s - \log q(y_{n} |f(x_{n}, \epsilon_s)) $$
  
- We used S = 1 or S = 12.
-
+ In practice, we use S = 1 or S = 12. Taking more samples would give a better estimate however since we are using stochastic gradient descent, we are already averaging on the batches and therefore have a doubly stochastic gradient descent.
 
 %------------------------------------------------------------------------------------------------
 \chapter{Results}
@@ -853,6 +854,9 @@ A. A. Alemi, I. Fischer, J. V. Dillon, and K. Murphy
 Ilya Sutskever, Oriol Vinyals and Quoc V. Le
 \textit{Sequence to Sequence Learning with Neural Networks}
 NIPS 2014
-
+\bibitem{attention}
+Dzmitry Bahdanau, KyungHyun Cho and Yoshua Bengio
+\textit{Neural Machine Translation by Jointly Learning to Align and Translate}
+ICLR 2015
 \end{thebibliography}
 \end{document}
