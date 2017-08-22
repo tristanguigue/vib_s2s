@@ -439,6 +439,60 @@ class Seq2LabelsCNN(StochasticNetwork):
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 
+class Seq2LabelCNN(StochasticNetwork):
+    def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size,
+                 nb_layers, nb_samples, channels, update_prior):
+        super().__init__(bottleneck_size, update_prior)
+        self.seq_size = seq_size
+        self.output_size = output_size
+        img_size = int(np.sqrt(input_size))
+        flat_size = int(img_size / 4) ** 2
+
+        cell = tf.contrib.rnn.GRUCell(hidden_size)
+        stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
+
+        with tf.name_scope('input'):
+            self.x = tf.placeholder(tf.float32, [None, input_size], name='x-input')
+            self.y_true = tf.placeholder(tf.float32, [None, output_size], name='y-input')
+            y_true = tf.reshape(self.y_true, [-1, seq_size, output_size])
+            self.y_true_digits = tf.argmax(y_true, axis=2)
+
+        with tf.name_scope('encoder'):
+            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
+            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
+            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
+            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
+
+        with tf.name_scope('decoder'):
+            dec_weights_first_input = self.weight_variable(
+                'dec_weights_first_input', [bottleneck_size, self.output_size])
+            dec_biases_first_input = self.bias_variable(
+                'dec_biases_first_input', [self.output_size])
+
+        x_image = tf.reshape(self.x, [-1, img_size, img_size, 1])
+        conv1 = layers.conv2d(x_image, channels, [3, 3], scope='conv1', activation_fn=tf.nn.relu)
+        pool1 = layers.max_pool2d(conv1, [2, 2], scope='pool1')
+        conv2 = layers.conv2d(pool1, channels, [3, 3], scope='conv2', activation_fn=tf.nn.relu)
+        pool2 = layers.max_pool2d(conv2, [2, 2], scope='pool2')
+        inputs = tf.reshape(pool2, [-1, seq_size, flat_size * channels])
+
+        with tf.variable_scope('rnn'):
+            outputs, state = tf.nn.dynamic_rnn(stack, inputs, dtype=tf.float32)
+
+        self.mu = tf.matmul(outputs[:, -1], out_weights_mu) + out_biases_mu
+        self.sigma = tf.nn.softplus(tf.matmul(outputs[:, -1], out_weights_sigma) + out_biases_sigma)
+
+        batch_size = tf.shape(self.x)[0]
+        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
+        epsilon = tf.reduce_mean(epsilon, 1)
+
+        z = self.mu + tf.multiply(self.sigma, epsilon)
+        self.output = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
+
+        accurate_predictions = tf.equal(tf.argmax(self.output, axis=1), self.y_true_digit)
+        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+
+
 class Seq2Pixel(StochasticNetwork):
     def __init__(self, partial_seq_size, hidden_size, bottleneck_size, output_size,
                  nb_layers, nb_samples, update_prior, lstm):

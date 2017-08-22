@@ -91,9 +91,9 @@ if __name__ == '__main__':
                         help='the learning rate for the Adam optimiser')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
-    parser.add_argument('--train', type=int, default=80,
+    parser.add_argument('--train', type=int, default=400,
                         help='train samples')
-    parser.add_argument('--test', type=int, default=20,
+    parser.add_argument('--test', type=int, default=100,
                         help='test samples')
     parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')
@@ -103,7 +103,7 @@ if __name__ == '__main__':
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
                         help='label of images selected')
-    parser.add_argument('--batch', type=int, default=10,
+    parser.add_argument('--batch', type=int, default=100,
                         help='batch size')
     parser.add_argument('--output_seq_size', type=int, default=15,
                         help='output sequence size')

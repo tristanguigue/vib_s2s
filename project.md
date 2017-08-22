@@ -119,3 +119,7 @@ point far away
 - Try using NN for decoder q(y|z)
 - Try CNN again
 
+# August 22nd
+- Meeting: Fixed low accuracy issue (more hidden states), tried with ordered data, Accuracy vs Loss, video priliminary work, thesis, translation: small sequences
+- Run with smaller vocabulary size
+- Video: more data
