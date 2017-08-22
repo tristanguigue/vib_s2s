@@ -2,7 +2,6 @@ from networks import Seq2Label
 from learners import SupervisedLossLearner
 from tools import Batcher
 import argparse
-from PIL import Image
 import time
 import os
 from scipy import misc
@@ -27,6 +26,7 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
         for image_path in glob.glob(DIR + DATA_DIR + 'particle_box_' + str(i) + '/*.png'):
             rgb = misc.imread(image_path)
             image = np.dot(rgb[:, :, :3], [0.299, 0.587, 0.114])
+            image = (128 > image).astype('float32')
             video.append(image)
         video = np.array(video)
         videos.append(video)
