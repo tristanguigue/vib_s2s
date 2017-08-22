@@ -19,6 +19,8 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
 
     targets = np.load(DIR + DATA_DIR + 'targets.npy')
+    targets = (targets - np.min(targets)) / (np.max(targets) - np.min(targets))
+
     videos = []
     for i in range(train_samples + test_samples):
         video = []
@@ -45,13 +47,10 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
 
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, batch_size)
-    train_loader = Batcher(train_data, train_labels, batch_size)
-    test_loader = Batcher(test_data, test_labels, batch_size)
     seq2seq = Seq2Label(seq_length, hidden_units, bottleneck_size, input_size,
                         output_size, layers, nb_samples, update_prior=True)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, continuous=True)
     best_loss = None
-    best_accuracy = 0
 
     for epoch in range(epochs):
         print('\nEpoch:', epoch)
@@ -92,9 +91,9 @@ if __name__ == '__main__':
                         help='the learning rate for the Adam optimiser')
     parser.add_argument('--layers', type=int, default=1,
                         help='number of rnn layers')
-    parser.add_argument('--train', type=int, default=8,
+    parser.add_argument('--train', type=int, default=80,
                         help='train samples')
-    parser.add_argument('--test', type=int, default=2,
+    parser.add_argument('--test', type=int, default=20,
                         help='test samples')
     parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')
@@ -104,7 +103,7 @@ if __name__ == '__main__':
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
                         help='label of images selected')
-    parser.add_argument('--batch', type=int, default=2,
+    parser.add_argument('--batch', type=int, default=10,
                         help='batch size')
     parser.add_argument('--output_seq_size', type=int, default=15,
                         help='output sequence size')
