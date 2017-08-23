@@ -258,8 +258,8 @@ class Seq2Label(StochasticNetwork):
         self.seq_size = seq_size
         self.output_size = output_size
 
-        cell = tf.contrib.rnn.GRUCell(hidden_size)
-        stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
+        stack = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.GRUCell(hidden_size)
+                                             for _ in range(nb_layers)])
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')

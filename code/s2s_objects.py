@@ -14,8 +14,8 @@ DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, layers, train_samples, test_samples,
-         epochs, hidden_units, bottleneck_size, label_selected, batch_size,
-         output_seq_size, save_checkpoints, nb_samples, update_marginal):
+         epochs, hidden_units, bottleneck_size, batch_size,
+         save_checkpoints, nb_samples, update_marginal):
 
     targets = np.load(DIR + DATA_DIR + 'targets.npy')
     targets = (targets - np.min(targets)) / (np.max(targets) - np.min(targets))
@@ -101,12 +101,8 @@ if __name__ == '__main__':
                         help='hidden units of decoder')
     parser.add_argument('--bottleneck', type=int, default=32,
                         help='bottleneck size')
-    parser.add_argument('--label', type=int,
-                        help='label of images selected')
     parser.add_argument('--batch', type=int, default=200,
                         help='batch size')
-    parser.add_argument('--output_seq_size', type=int, default=15,
-                        help='output sequence size')
     parser.add_argument('--checkpoint', type=int, default=0,
                         help='save checkpoints')
     parser.add_argument('--samples', type=int, default=12,
@@ -116,5 +112,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.label, args.batch, args.output_seq_size,
+         args.hidden, args.bottleneck, args.batch,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))
