@@ -17,13 +17,14 @@ class Learner(ABC):
         self.loss_op = self.loss()
 
         with tf.name_scope('train'):
+            optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+            optimizer = tf.contrib.opt.MovingAverageOptimizer(optimizer, average_decay=0.999)
             if clip_gradient:
-                optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
                 gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
                 gradients, _ = tf.clip_by_global_norm(gradients, GRADIENT_GLOBAL_NORM)
                 self.train_step = optimizer.apply_gradients(zip(gradients, variables))
             else:
-                self.train_step = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss_op)
+                self.train_step = optimizer.minimize(self.loss_op, self.net.variables)
 
         self.acc_summary = tf.summary.scalar('accuracy_summary', self.net.accuracy)
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
@@ -33,6 +34,7 @@ class Learner(ABC):
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         self.saver = tf.train.Saver()
+        self.train_saver = optimizer.swapping_saver()
         self.writer = tf.summary.FileWriter(DIR + LOGS_PATH + run_name, graph=tf.get_default_graph())
         self.sess.run(tf.global_variables_initializer())
 
