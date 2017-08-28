@@ -9,7 +9,7 @@ DATA_DIR = '/tmp/tensorflow/mnist/input_data'
 
 
 def main(beta, learning_rate, nb_epochs, train_size, test_size,
-         hidden_units, bottleneck_size, batch_size, nb_samples, update_marginal):
+         hidden_units, bottleneck_size, batch_size, test_batch, nb_samples, update_marginal):
     run_name = 'sfnn_mnist_' + str(int(time.time()))
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     input_size = mnist.train.images.shape[1]
@@ -32,7 +32,7 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
         test_labels = mnist.test.labels[:test_size]
 
     train_loader = Batcher(train_data, train_labels, batch_size)
-    test_loader = Batcher(test_data, test_labels, batch_size)
+    test_loader = Batcher(test_data, test_labels, test_batch)
     best_accuracy = 0
     best_loss = None
 
@@ -89,6 +89,8 @@ if __name__ == '__main__':
                         help='bottleneck size')
     parser.add_argument('--batch', type=int, default=500,
                         help='batch size')
+    parser.add_argument('--test_batch', type=int, default=5000,
+                        help='batch size')
     parser.add_argument('--samples', type=int, default=1,
                         help='number of samples to get posterior expectation')
     parser.add_argument('--update_marginal', type=int, default=0,
@@ -96,5 +98,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.epochs,
-         args.train, args.test, args.hidden, args.bottleneck, args.batch, args.samples,
+         args.train, args.test, args.hidden, args.bottleneck, args.batch, args.test_batch, args.samples,
          bool(args.update_marginal))
