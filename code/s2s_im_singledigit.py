@@ -15,7 +15,7 @@ NB_PRED_SAMPLES = 4
 
 
 def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
-         epochs, hidden_units, bottleneck_size, label_selected, batch_size,
+         epochs, hidden_units, bottleneck_size, label_selected, batch_size, test_batch,
          save_checkpoints, nb_samples, update_marginal):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     run_name = 's2s_imsingledigit_' + str(int(time.time()))
@@ -43,7 +43,7 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     test_labels = np.array(np.split(test_labels, test_samples))[:, 0, :]
 
     train_loader = Batcher(train_data, train_labels, batch_size)
-    test_loader = Batcher(test_data, test_labels, batch_size)
+    test_loader = Batcher(test_data, test_labels, test_batch)
     seq2seq = Seq2Label(seq_length, hidden_units, bottleneck_size, input_size,
                         output_size, layers, nb_samples, update_prior=True)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
@@ -62,6 +62,9 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
             total_loss += current_loss
 
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
+
+        learner.training_saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+        learner.saver.restore(learner.test_sess, DIR + CHECKPOINT_PATH + run_name)
 
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
@@ -108,7 +111,9 @@ if __name__ == '__main__':
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
                         help='label of images selected')
-    parser.add_argument('--batch', type=int, default=500,
+    parser.add_argument('--batch', type=int, default=100,
+                        help='batch size')
+    parser.add_argument('--test_batch', type=int, default=500,
                         help='batch size')
     parser.add_argument('--checkpoint', type=int, default=0,
                         help='save checkpoints')
@@ -119,5 +124,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.length, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.label, args.batch,
+         args.hidden, args.bottleneck, args.label, args.batch, args.test_batch,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))

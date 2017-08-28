@@ -54,9 +54,6 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
             decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
             decoder_biases = self.bias_variable('decoder_biases', [output_size])
 
-        self.variables = [h1_weights, h1_biases, h2_weights, h2_biases, out_weights, out_biases,
-                          decoder_weights, decoder_biases]
-
         # Model
         hidden1 = tf.nn.relu(tf.matmul(self.x, h1_weights) + h1_biases)
         hidden2 = tf.nn.relu(tf.matmul(hidden1, h2_weights) + h2_biases)
@@ -269,10 +266,8 @@ class Seq2Label(StochasticNetwork):
             self.y_true_digit = tf.argmax(self.y_true, axis=1)
 
         with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
-            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
-            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
+            out_weights = self.weight_variable('out_weights_mu', [hidden_size, 2 * bottleneck_size])
+            out_biases = self.bias_variable('out_biases_mu', [2 * bottleneck_size])
 
         with tf.name_scope('decoder'):
             dec_weights_first_input = self.weight_variable(
@@ -283,8 +278,9 @@ class Seq2Label(StochasticNetwork):
         with tf.variable_scope('rnn'):
             outputs, state = tf.nn.dynamic_rnn(stack, self.x, dtype=tf.float32)
 
-        self.mu = tf.matmul(outputs[:, -1], out_weights_mu) + out_biases_mu
-        self.sigma = tf.nn.softplus(tf.matmul(outputs[:, -1], out_weights_sigma) + out_biases_sigma)
+        out = tf.matmul(outputs[:, -1], out_weights) + out_biases
+        self.mu = out[:, :bottleneck_size]
+        self.sigma = tf.log(1 + tf.exp(out[:, bottleneck_size:] - 5.0))
 
         batch_size = tf.shape(self.x)[0]
         epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
