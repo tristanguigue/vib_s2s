@@ -5,11 +5,12 @@ import os
 
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 LOGS_PATH = 'logs/'
+CHECKPOINT_PATH = 'checkpoints/'
 GRADIENT_GLOBAL_NORM = 10.0
 
 
 class Learner(ABC):
-    def __init__(self, network, learning_rate, train_batch, run_name, clip_gradient=True):
+    def __init__(self, network, learning_rate, train_batch, run_name):
         self.lr = tf.placeholder(tf.float32)
         self.net = network
         self.learning_rate = learning_rate
@@ -17,14 +18,18 @@ class Learner(ABC):
         self.loss_op = self.loss()
 
         with tf.name_scope('train'):
-            optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-            optimizer = tf.contrib.opt.MovingAverageOptimizer(optimizer, average_decay=0.999)
-            if clip_gradient:
-                gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
-                gradients, _ = tf.clip_by_global_norm(gradients, GRADIENT_GLOBAL_NORM)
-                self.train_step = optimizer.apply_gradients(zip(gradients, variables))
-            else:
-                self.train_step = optimizer.minimize(self.loss_op, self.net.variables)
+                optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+                optimizer = tf.contrib.opt.MovingAverageOptimizer(optimizer, average_decay=0.999)
+                self.train_step = optimizer.minimize(self.loss_op)
+
+        # ema = tf.train.ExponentialMovingAverage(decay=0.9999999)
+        # gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
+        # maintain_averages_op = ema.apply(variables)
+
+        # with tf.control_dependencies([train_step]):
+        #     self.train_step = tf.group(maintain_averages_op)
+
+        # variables_to_restore = ema.variables_to_restore()
 
         self.acc_summary = tf.summary.scalar('accuracy_summary', self.net.accuracy)
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
@@ -33,8 +38,8 @@ class Learner(ABC):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
+        self.saver_file = DIR + CHECKPOINT_PATH + run_name + '.ckpt'
         self.saver = tf.train.Saver()
-        self.train_saver = optimizer.swapping_saver()
         self.writer = tf.summary.FileWriter(DIR + LOGS_PATH + run_name, graph=tf.get_default_graph())
         self.sess.run(tf.global_variables_initializer())
 
@@ -60,6 +65,7 @@ class Learner(ABC):
         return current_loss, train_loss_summary
 
     def test_network(self, loader, epoch):
+        # self.saver.restore(self.sess, self.saver_file)
         total_accuracy = 0
         total_loss = 0
         nb_batches = loader.num_batches
