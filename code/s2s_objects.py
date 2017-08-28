@@ -14,7 +14,7 @@ DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, layers, train_samples, test_samples,
-         epochs, hidden_units, bottleneck_size, batch_size,
+         epochs, hidden_units, bottleneck_size, batch_size, test_batch,
          save_checkpoints, nb_samples, update_marginal):
 
     targets = np.load(DIR + DATA_DIR + 'targets.npy')
@@ -46,7 +46,7 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
     test_labels = targets[train_samples:train_samples + test_samples]
 
     train_loader = Batcher(train_data, train_labels, batch_size)
-    test_loader = Batcher(test_data, test_labels, batch_size)
+    test_loader = Batcher(test_data, test_labels, test_batch)
     seq2seq = Seq2Label(seq_length, hidden_units, bottleneck_size, input_size,
                         output_size, layers, nb_samples, update_prior=update_marginal)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, continuous=True)
@@ -65,6 +65,9 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
             total_loss += current_loss
 
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
+
+        learner.training_saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+        learner.saver.restore(learner.test_sess, DIR + CHECKPOINT_PATH + run_name)
 
         train_loss, _ = learner.test_network(train_loader, epoch=None)
         test_loss, _ = learner.test_network(test_loader, epoch)
@@ -101,7 +104,9 @@ if __name__ == '__main__':
                         help='hidden units of decoder')
     parser.add_argument('--bottleneck', type=int, default=32,
                         help='bottleneck size')
-    parser.add_argument('--batch', type=int, default=200,
+    parser.add_argument('--batch', type=int, default=100,
+                        help='batch size')
+    parser.add_argument('--test_batch', type=int, default=400,
                         help='batch size')
     parser.add_argument('--checkpoint', type=int, default=0,
                         help='save checkpoints')
@@ -112,5 +117,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.batch,
+         args.hidden, args.bottleneck, args.batch, args.test_batch,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))
