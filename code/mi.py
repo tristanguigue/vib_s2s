@@ -4,8 +4,11 @@ from learners import SupervisedLossLearner
 import argparse
 import time
 from tools import Batcher
+import os
 
 DATA_DIR = '/tmp/tensorflow/mnist/input_data'
+CHECKPOINT_PATH = 'checkpoints/'
+DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, nb_epochs, train_size, test_size,
@@ -49,6 +52,9 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
             total_loss += current_loss
 
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
+
+        learner.training_saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+        learner.saver.restore(learner.test_sess, DIR + CHECKPOINT_PATH + run_name)
 
         train_loss, train_accuracy = learner.test_network(train_loader, epoch=None)
         test_loss, test_accuracy = learner.test_network(test_loader, epoch)
