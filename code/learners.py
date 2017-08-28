@@ -34,6 +34,7 @@ class Learner(ABC):
         self.saver = tf.train.Saver()
         self.writer = tf.summary.FileWriter(DIR + LOGS_PATH + run_name, graph=tf.get_default_graph())
         self.sess.run(tf.global_variables_initializer())
+        self.test_sess.run(tf.global_variables_initializer())
 
     @abstractmethod
     def loss(self):
@@ -69,7 +70,7 @@ class Learner(ABC):
             }
             if batch_ys is not None:
                 feed_dict.update({self.net.y_true: batch_ys})
-            batch_loss, batch_accuracy, test_loss_summary, acc_summary = self.sess.run(
+            batch_loss, batch_accuracy, test_loss_summary, acc_summary = self.test_sess.run(
                 [self.loss_op, self.net.accuracy, self.test_loss_summary, self.acc_summary], feed_dict=feed_dict)
             total_accuracy += batch_accuracy
             total_loss += batch_loss
@@ -84,13 +85,13 @@ class Learner(ABC):
         feed_dict = {self.net.x: batch_xs}
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
-        return self.sess.run(self.net.predicted_sequence, feed_dict=feed_dict)
+        return self.test_sess.run(self.net.predicted_sequence, feed_dict=feed_dict)
 
     def sample_sequence(self, batch_xs, batch_ys=None):
         feed_dict = {self.net.x: batch_xs}
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
-        return self.sess.run(self.net.sampled_sequence, feed_dict=feed_dict)
+        return self.test_sess.run(self.net.sampled_sequence, feed_dict=feed_dict)
 
 
 class SupervisedLossLearner(Learner):
