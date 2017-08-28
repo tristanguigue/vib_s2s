@@ -22,15 +22,6 @@ class Learner(ABC):
                 optimizer = tf.contrib.opt.MovingAverageOptimizer(optimizer, average_decay=0.999)
                 self.train_step = optimizer.minimize(self.loss_op)
 
-        # ema = tf.train.ExponentialMovingAverage(decay=0.9999999)
-        # gradients, variables = zip(*optimizer.compute_gradients(self.loss_op))
-        # maintain_averages_op = ema.apply(variables)
-
-        # with tf.control_dependencies([train_step]):
-        #     self.train_step = tf.group(maintain_averages_op)
-
-        # variables_to_restore = ema.variables_to_restore()
-
         self.acc_summary = tf.summary.scalar('accuracy_summary', self.net.accuracy)
         self.train_loss_summary = tf.summary.scalar('train_loss_summary', self.loss_op)
         self.test_loss_summary = tf.summary.scalar('test_loss_summary', self.loss_op)
@@ -38,7 +29,6 @@ class Learner(ABC):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
-        self.saver_file = DIR + CHECKPOINT_PATH + run_name + '.ckpt'
         self.saver = tf.train.Saver()
         self.writer = tf.summary.FileWriter(DIR + LOGS_PATH + run_name, graph=tf.get_default_graph())
         self.sess.run(tf.global_variables_initializer())
@@ -65,7 +55,6 @@ class Learner(ABC):
         return current_loss, train_loss_summary
 
     def test_network(self, loader, epoch):
-        # self.saver.restore(self.sess, self.saver_file)
         total_accuracy = 0
         total_loss = 0
         nb_batches = loader.num_batches
