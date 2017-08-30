@@ -15,7 +15,7 @@ NB_SAMPLES = 4
 
 
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
-         epochs, hidden1_units, hidden2_units, bottleneck_size, label_selected, batch_size, test_batch, lstm_cell,
+         epochs, hidden1_units, hidden2_units, bottleneck_size, label_selected, batch_size, test_batch,
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
     run_name = 's2s_cont_' + str(int(time.time()))
 
@@ -32,7 +32,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, test_batch)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden1_units, hidden2_units,
-                      bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal, lstm=lstm_cell,
+                      bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal,
                       binary=False)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
                                     continuous=True)
@@ -107,8 +107,6 @@ if __name__ == '__main__':
                         help='batch size')
     parser.add_argument('--test_batch', type=int, default=500,
                         help='batch size')
-    parser.add_argument('--lstm', type=int, default=1,
-                        help='is lstm cell')
     parser.add_argument('--output_seq_size', type=int, default=15,
                         help='output sequence size')
     parser.add_argument('--checkpoint', type=int, default=0,
@@ -120,5 +118,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
-         args.hidden1, args.hidden2, args.bottleneck, args.label, args.batch, args.test_batch, bool(args.lstm), args.output_seq_size,
+         args.hidden1, args.hidden2, args.bottleneck, args.label, args.batch, args.test_batch, args.output_seq_size,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))
