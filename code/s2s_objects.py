@@ -1,4 +1,4 @@
-from networks import Seq2Label
+from networks import Seq2LabelCNN
 from learners import SupervisedLossLearner
 from tools import Batcher
 import argparse
@@ -47,8 +47,8 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
 
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, test_batch)
-    seq2seq = Seq2Label(seq_length, hidden_units, bottleneck_size, input_size,
-                        output_size, layers, nb_samples, update_prior=update_marginal)
+    seq2seq = Seq2LabelCNN(seq_length, hidden_units, bottleneck_size, input_size,
+                            output_size, layers, nb_samples, 16, update_prior=update_marginal)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, continuous=True)
     best_loss = None
 
