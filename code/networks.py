@@ -450,10 +450,9 @@ class Seq2LabelCNN(StochasticNetwork):
         stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
 
         with tf.name_scope('input'):
-            self.x = tf.placeholder(tf.float32, [None, input_size], name='x-input')
+            self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')
             self.y_true = tf.placeholder(tf.float32, [None, output_size], name='y-input')
-            y_true = tf.reshape(self.y_true, [-1, seq_size, output_size])
-            self.y_true_digits = tf.argmax(y_true, axis=2)
+            self.y_true_digits = tf.argmax(self.y_true, axis=1)
 
         with tf.name_scope('encoder'):
             out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
@@ -487,7 +486,7 @@ class Seq2LabelCNN(StochasticNetwork):
         z = self.mu + tf.multiply(self.sigma, epsilon)
         self.output = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
 
-        accurate_predictions = tf.equal(tf.argmax(self.output, axis=1), self.y_true_digit)
+        accurate_predictions = tf.equal(tf.argmax(self.output, axis=1), self.y_true_digits)
         self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
 
 
