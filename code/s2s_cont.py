@@ -15,7 +15,7 @@ NB_SAMPLES = 4
 
 
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
-         epochs, hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell,
+         epochs, hidden_units, bottleneck_size, label_selected, batch_size, test_batch, lstm_cell,
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
     run_name = 's2s_cont_' + str(int(time.time()))
 
@@ -30,9 +30,9 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     test_data = test_data[:, start_pos:start_pos + partial_seq_length + output_seq_size]
 
     train_loader = Batcher(train_data, None, batch_size)
-    test_loader = Batcher(test_data, None, batch_size)
+    test_loader = Batcher(test_data, None, test_batch)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
-                      bottleneck_size, 1, layers, nb_samples, update_prior=True, lstm=lstm_cell,
+                      bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal, lstm=lstm_cell,
                       binary=False)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
                                     continuous=True)
@@ -50,6 +50,9 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
                 batch_xs, None, learning_rate)
             total_loss += current_loss
             learner.writer.add_summary(loss_summary, epoch * train_loader.num_batches + i)
+
+        learner.training_saver.save(learner.sess, DIR + CHECKPOINT_PATH + run_name)
+        learner.saver.restore(learner.test_sess, DIR + CHECKPOINT_PATH + run_name)
 
         train_loss, _ = learner.test_network(train_loader, epoch=None)
         test_loss, _ = learner.test_network(test_loader, epoch)
@@ -98,7 +101,9 @@ if __name__ == '__main__':
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
                         help='label of images selected')
-    parser.add_argument('--batch', type=int, default=500,
+    parser.add_argument('--batch', type=int, default=100,
+                        help='batch size')
+    parser.add_argument('--test_batch', type=int, default=500,
                         help='batch size')
     parser.add_argument('--lstm', type=int, default=1,
                         help='is lstm cell')
@@ -113,5 +118,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm), args.output_seq_size,
+         args.hidden, args.bottleneck, args.label, args.batch, args.test_batch, bool(args.lstm), args.output_seq_size,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))
