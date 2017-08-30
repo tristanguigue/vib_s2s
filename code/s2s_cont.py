@@ -15,7 +15,7 @@ NB_SAMPLES = 4
 
 
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
-         epochs, hidden_units, bottleneck_size, label_selected, batch_size, test_batch, lstm_cell,
+         epochs, hidden1_units, hidden2_units, bottleneck_size, label_selected, batch_size, test_batch, lstm_cell,
          output_seq_size, save_checkpoints, nb_samples, update_marginal):
     run_name = 's2s_cont_' + str(int(time.time()))
 
@@ -31,7 +31,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
 
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, test_batch)
-    seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden_units,
+    seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden1_units, hidden2_units,
                       bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal, lstm=lstm_cell,
                       binary=False)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
@@ -95,9 +95,11 @@ if __name__ == '__main__':
                         help='test samples')
     parser.add_argument('--epochs', type=int, default=5000,
                         help='number of epochs to run')
-    parser.add_argument('--hidden', type=int, default=128,
-                        help='hidden units')
-    parser.add_argument('--bottleneck', type=int, default=32,
+    parser.add_argument('--hidden1', type=int, default=128,
+                        help='hidden units of encoder')
+    parser.add_argument('--hidden2', type=int, default=64,
+                        help='hidden units of decoder')
+    parser.add_argument('--bottleneck', type=int, default=64,
                         help='bottleneck size')
     parser.add_argument('--label', type=int,
                         help='label of images selected')
@@ -118,5 +120,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.label, args.batch, args.test_batch, bool(args.lstm), args.output_seq_size,
+         args.hidden1, args.hidden2, args.bottleneck, args.label, args.batch, args.test_batch, bool(args.lstm), args.output_seq_size,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))
