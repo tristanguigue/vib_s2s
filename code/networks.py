@@ -224,7 +224,11 @@ class Seq2Label(StochasticNetwork):
         epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
         epsilon = tf.reduce_mean(epsilon, 1)
 
-        z = self.mu + tf.multiply(self.sigma, epsilon)
+        if dropout:
+            z = self.mu
+        else:
+            z = self.mu + tf.multiply(self.sigma, epsilon)
+
         self.output = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
 
         accurate_predictions = tf.equal(tf.argmax(self.output, axis=1), self.y_true_digit)
