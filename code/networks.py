@@ -181,13 +181,22 @@ class Seq2Seq(StochasticNetwork):
 
 class Seq2Label(StochasticNetwork):
     def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size,
-                 nb_layers, nb_samples, update_prior):
+                 nb_layers, nb_samples, update_prior, dropout):
         super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
 
-        stack = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.GRUCell(hidden_size)
-                                             for _ in range(nb_layers)])
+        cell = tf.contrib.rnn.GRUCell(hidden_size)
+        if dropout:
+            cell = tf.contrib.rnn.DropoutWrapper(
+                first_cell,
+                input_keep_prob=0.95,
+                output_keep_prob=0.95,
+                state_keep_prob=0.95,
+                input_size=input_size,
+                dtype=tf.float32,
+                variational_recurrent=True)
+        stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')

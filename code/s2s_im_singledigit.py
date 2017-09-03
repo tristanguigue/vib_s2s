@@ -16,7 +16,7 @@ NB_PRED_SAMPLES = 4
 
 def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
          epochs, hidden_units, bottleneck_size, label_selected, batch_size, test_batch,
-         save_checkpoints, nb_samples, update_marginal):
+         save_checkpoints, nb_samples, update_marginal, dropout):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     run_name = 's2s_imsingledigit_' + str(int(time.time()))
 
@@ -45,7 +45,8 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, test_batch)
     seq2seq = Seq2Label(seq_length, hidden_units, bottleneck_size, input_size,
-                        output_size, layers, nb_samples, update_prior=True)
+                        output_size, layers, nb_samples, update_prior=True,
+                        dropout=dropout)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
     best_accuracy = 0
@@ -121,8 +122,10 @@ if __name__ == '__main__':
                         help='number of samples to get posterior expectation')
     parser.add_argument('--update_marginal', type=int, default=0,
                         help='marginal has learnable variable mean and variance')
+    parser.add_argument('--dropout', type=int, default=0,
+                        help='dropout regulariser')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.length, args.layers, args.train, args.test, args.epochs,
          args.hidden, args.bottleneck, args.label, args.batch, args.test_batch,
-         bool(args.checkpoint), args.samples, bool(args.update_marginal))
+         bool(args.checkpoint), args.samples, bool(args.update_marginal), bool(args.dropout))
