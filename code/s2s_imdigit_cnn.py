@@ -15,7 +15,7 @@ NB_PRED_SAMPLES = 4
 
 def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
          epochs, hidden1_units, hidden2_units, bottleneck_size, label_selected, batch_size, test_batch,
-         save_checkpoints, nb_samples, update_marginal):
+         save_checkpoints, nb_samples, update_marginal, dropout):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     run_name = 's2s_imdigitcnn_' + str(int(time.time()))
     batch_size = batch_size * seq_length
@@ -41,7 +41,8 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, test_batch)
     seq2seq = Seq2LabelsCNN(seq_length, hidden1_units, hidden2_units, bottleneck_size, input_size,
-                            output_size, layers, nb_samples, 16, update_prior=update_marginal)
+                            output_size, layers, nb_samples, 16, update_prior=update_marginal,
+                            dropout=dropout)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name,
                                     reduce_seq=True)
     best_loss = None
@@ -128,8 +129,10 @@ if __name__ == '__main__':
                         help='number of samples to get posterior expectation')
     parser.add_argument('--update_marginal', type=int, default=0,
                         help='marginal has learnable variable mean and variance')
+    parser.add_argument('--dropout', type=int, default=0,
+                        help='dropout regulariser')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.length, args.layers, args.train, args.test, args.epochs,
          args.hidden1, args.hidden2, args.bottleneck, args.label, args.batch, args.test_batch,
-         bool(args.checkpoint), args.samples, bool(args.update_marginal))
+         bool(args.checkpoint), args.samples, bool(args.update_marginal), bool(args.dropout))

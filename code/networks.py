@@ -349,7 +349,7 @@ class Seq2Labels(StochasticNetwork):
 
 class Seq2LabelsCNN(StochasticNetwork):
     def __init__(self, seq_size, hidden_size1, hidden_size2, bottleneck_size, input_size, output_size,
-                 nb_layers, nb_samples, channels, update_prior):
+                 nb_layers, nb_samples, channels, update_prior, dropout):
         super().__init__(bottleneck_size, update_prior)
         self.seq_size = seq_size
         self.output_size = output_size
@@ -358,6 +358,25 @@ class Seq2LabelsCNN(StochasticNetwork):
 
         first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
         second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
+
+        if dropout:
+            first_cell = tf.contrib.rnn.DropoutWrapper(
+                first_cell,
+                input_keep_prob=0.95,
+                output_keep_prob=0.95,
+                state_keep_prob=0.95,
+                input_size=input_size,
+                dtype=tf.float32,
+                variational_recurrent=True)
+            second_cell = tf.contrib.rnn.DropoutWrapper(
+                second_cell,
+                input_keep_prob=0.95,
+                output_keep_prob=0.95,
+                state_keep_prob=0.95,
+                dtype=tf.float32,
+                input_size=output_size,
+                variational_recurrent=True)
+
         first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
         second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 
@@ -404,7 +423,10 @@ class Seq2LabelsCNN(StochasticNetwork):
         epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
         epsilon = tf.reduce_mean(epsilon, 1)
 
-        z = self.mu + tf.multiply(self.sigma, epsilon)
+        if dropout:
+            z = self.mu
+        else:
+            z = self.mu + tf.multiply(self.sigma, epsilon)
 
         first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
         new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
