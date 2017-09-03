@@ -189,7 +189,7 @@ class Seq2Label(StochasticNetwork):
         cell = tf.contrib.rnn.GRUCell(hidden_size)
         if dropout:
             cell = tf.contrib.rnn.DropoutWrapper(
-                first_cell,
+                cell,
                 input_keep_prob=0.95,
                 output_keep_prob=0.95,
                 state_keep_prob=0.95,
