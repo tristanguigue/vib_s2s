@@ -16,7 +16,7 @@ NB_SAMPLES = 4
 
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
          epochs, hidden1_units, hidden2_units, bottleneck_size, label_selected, batch_size, test_batch,
-         output_seq_size, save_checkpoints, nb_samples, update_marginal):
+         output_seq_size, save_checkpoints, nb_samples, update_marginal, dropout):
     run_name = 's2s_cont_' + str(int(time.time()))
 
     train_data = np.load(DIR + TRAIN_DATA)
@@ -33,7 +33,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     test_loader = Batcher(test_data, None, test_batch)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden1_units, hidden2_units,
                       bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal,
-                      binary=False, dropout=False)
+                      binary=False, dropout=dropout)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
                                     continuous=True, reduce_seq=True)
     best_loss = None
@@ -115,8 +115,10 @@ if __name__ == '__main__':
                         help='number of samples to get posterior expectation')
     parser.add_argument('--update_marginal', type=int, default=0,
                         help='marginal has learnable variable mean and variance')
+    parser.add_argument('--dropout', type=int, default=0,
+                        help='dropout regulariser')
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
          args.hidden1, args.hidden2, args.bottleneck, args.label, args.batch, args.test_batch, args.output_seq_size,
-         bool(args.checkpoint), args.samples, bool(args.update_marginal))
+         bool(args.checkpoint), args.samples, bool(args.update_marginal), bool(args.dropout))
