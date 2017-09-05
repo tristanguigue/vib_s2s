@@ -108,7 +108,8 @@ class SupervisedLossLearner(Learner):
             cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
                 labels=self.net.y_true, logits=self.net.output)
         elif self.continuous:
-            cross_entropy = tf.square(tf.norm(self.net.y_true - self.net.output, axis=1))
+            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
+                labels=tf.round(self.net.y_true), logits=self.net.output)
         else:
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
                 labels=self.net.y_true, logits=self.net.output)
