@@ -1,4 +1,4 @@
-from networks import Seq2Seq
+from networks import Seq2SeqCont
 from learners import SupervisedLossLearner
 from tools import Batcher
 import argparse
@@ -21,6 +21,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
 
     train_data = np.load(DIR + TRAIN_DATA)
     test_data = np.load(DIR + TEST_DATA)
+
     train_data = train_data[:train_samples]
     test_data = test_data[:test_samples]
     if not partial_seq_length:
@@ -31,7 +32,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
 
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, test_batch)
-    seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden1_units, hidden2_units,
+    seq2seq = Seq2SeqCont(partial_seq_length, output_seq_size, hidden1_units, hidden2_units,
                       bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal,
                       binary=False, dropout=dropout)
     learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
@@ -57,11 +58,11 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
         train_loss, _ = learner.test_network(train_loader, epoch=None)
         test_loss, _ = learner.test_network(test_loader, epoch)
 
-        if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
-            train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
-            test_samples = learner.sample_sequence(test_data[:NB_SAMPLES])
-            print(train_samples)
-            print(test_samples)
+        # if SAMPLE_EVERY is not None and not epoch % SAMPLE_EVERY:
+        #     train_samples = learner.sample_sequence(train_data[:NB_SAMPLES])
+        #     test_samples = learner.sample_sequence(test_data[:NB_SAMPLES])
+        #     print(train_samples)
+        #     print(test_samples)
 
         print('Time: ', time.time() - start)
         print('Loss: ', total_loss / train_loader.num_batches)

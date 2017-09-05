@@ -2,6 +2,7 @@ import tensorflow as tf
 from abc import ABC, abstractmethod
 from tools import kl_divergence_with_std, kl_divergence
 import os
+import math
 
 DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 LOGS_PATH = 'logs/'
@@ -108,8 +109,10 @@ class SupervisedLossLearner(Learner):
             cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
                 labels=self.net.y_true, logits=self.net.output)
         elif self.continuous:
-            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
-                labels=tf.round(self.net.y_true), logits=self.net.output)
+            mu = self.net.output
+            sigma = self.net.output_sigma
+            cross_entropy = 0.5 * (
+                tf.square(self.net.y_true - mu) / tf.square(sigma) + tf.log(2 * math.pi * tf.square(sigma)))
         else:
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
                 labels=self.net.y_true, logits=self.net.output)
