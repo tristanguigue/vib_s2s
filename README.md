@@ -1,0 +1,1 @@
+This is the code source of the master theses: Sequence to sequence learning with the Variational Information Bottleneck. 

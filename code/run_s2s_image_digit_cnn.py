@@ -1,3 +1,6 @@
+"""Apply the variational information bottleneck to the images to labels problems
+using Convolutional Neural Network to feed.
+"""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2LabelsCNN
 from learners import SupervisedLossLearner
