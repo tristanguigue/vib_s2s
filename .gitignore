@@ -1,3 +1,8 @@
 *.pyc
 *events.out*
 __pycache__
+logs
+*.toc
+*.log
+*.aux
+*.gz

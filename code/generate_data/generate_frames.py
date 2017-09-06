@@ -15,10 +15,11 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-NB_CIRCLES = 3
-NB_TRIANGLES = 2
-SIZE = 0.08
+NB_CIRCLES = 2
+NB_TRIANGLES = 3
+SIZE = 0.25
 FPS = 10
+NB_VIDEOS = 1000
 
 
 class ParticleBox:
@@ -68,43 +69,6 @@ class ParticleBox:
         self.tstate[:, :2] += dt * self.tstate[:, 2:]
         self.cstate[:, :2] += dt * self.cstate[:, 2:]
 
-        # # find pairs of particles undergoing a collision
-        # D = squareform(pdist(self.tstate[:, :2] + self.cstate[:, :2]))
-        # ind1, ind2 = np.where(D < 2 * self.size)
-        # unique = (ind1 < ind2)
-        # ind1 = ind1[unique]
-        # ind2 = ind2[unique]
-
-        # # update velocities of colliding pairs
-        # for i1, i2 in zip(ind1, ind2):
-        #     # mass
-        #     m1 = self.M[i1]
-        #     m2 = self.M[i2]
-
-        #     # location vector
-        #     r1 = self.state[i1, :2]
-        #     r2 = self.state[i2, :2]
-
-        #     # velocity vector
-        #     v1 = self.state[i1, 2:]
-        #     v2 = self.state[i2, 2:]
-
-        #     # relative location & velocity vectors
-        #     r_rel = r1 - r2
-        #     v_rel = v1 - v2
-
-        #     # momentum vector of the center of mass
-        #     v_cm = (m1 * v1 + m2 * v2) / (m1 + m2)
-
-        #     # collisions of spheres reflect v_rel over r_rel
-        #     rr_rel = np.dot(r_rel, r_rel)
-        #     vr_rel = np.dot(v_rel, r_rel)
-        #     v_rel = 2 * r_rel * vr_rel / rr_rel - v_rel
-
-        #     # assign new velocities
-        #     self.state[i1, 2:] = v_cm + v_rel * m2 / (m1 + m2)
-        #     self.state[i2, 2:] = v_cm - v_rel * m1 / (m1 + m2)
-
         # check for crossing boundary
         crossed_x1 = (self.tstate[:, 0] < self.bounds[0] + self.size)
         crossed_x2 = (self.tstate[:, 0] > self.bounds[1] - self.size)
@@ -118,12 +82,12 @@ class ParticleBox:
 
         self.tstate[crossed_y1 | crossed_y2, 3] *= -1
 
-        crossed_x1 = (self.cstate[:, 0] < self.bounds[0] + self.size)
-        crossed_x2 = (self.cstate[:, 0] > self.bounds[1] - self.size)
+        crossed_x1 = (self.cstate[:, 0] < self.bounds[0])
+        crossed_x2 = (self.cstate[:, 0] > self.bounds[1])
         self.circles_time += self.cstate.shape[0] - np.sum(crossed_x1 | crossed_x2)
 
-        crossed_y1 = (self.cstate[:, 1] < self.bounds[2] + self.size)
-        crossed_y2 = (self.cstate[:, 1] > self.bounds[3] - self.size)
+        crossed_y1 = (self.cstate[:, 1] < self.bounds[2])
+        crossed_y2 = (self.cstate[:, 1] > self.bounds[3])
 
         self.cstate[crossed_y1, 1] = self.bounds[2] + self.size
         self.cstate[crossed_y2, 1] = self.bounds[3] - self.size
@@ -150,14 +114,15 @@ dt = 1. / FPS # 30fps
 
 #------------------------------------------------------------
 # set up figure and animation
-fig = plt.figure()
+fig = plt.figure(figsize=(6, 6))
 fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
-                     xlim=(-3.2, 3.2), ylim=(-2.4, 2.4))
+                     xlim=(-2, 2), ylim=(-2.4, 2.4))
+fig.set_facecolor('white')
 
 # particles holds the locations of the particles
 triangles, = ax.plot([], [], '^', ms=6)
-circles, = ax.plot([], [], 'o', ms=6)
+circles, = ax.plot([], [], 's', ms=6)
 
 # rect is the box edge
 rect = plt.Rectangle(box.bounds[::2],
@@ -165,6 +130,7 @@ rect = plt.Rectangle(box.bounds[::2],
                      box.bounds[3] - box.bounds[2],
                      ec='none', lw=0, fc='none')
 ax.add_patch(rect)
+# ax.axis('scaled')
 
 def init():
     """initialize animation"""
@@ -198,28 +164,24 @@ def animate(i):
     return triangles, circles, rect
 
 targets = []
-for i in range(10):
-    ani = animation.FuncAnimation(fig, animate, frames=60, repeat=False,
-                                  interval=100, blit=True, init_func=init)
+plt.axis('off')
+
+for i in range(NB_VIDEOS):
+    print(i)
+    ani = animation.FuncAnimation(fig, animate, frames=40, repeat=False,
+                                  interval=100, blit=False, init_func=init)
     ani.new_frame_seq()
 
-    # save the animation as an mp4.  This requires ffmpeg or mencoder to be
-    # installed.  The extra_args ensure that the x264 codec is used, so that
-    # the video can be embedded in html5.  You may need to adjust this for
-    # your system: for more information, see
-    # http://matplotlib.sourceforge.net/api/animation_api.html
-
     # plt.show()
-    name = 'particle_box_' + str(i)
-    ani.save(name + '.mp4', dpi=10)
+    name = 'generated_frames/particle_box_' + str(i)
+    ani.save(name + '.mp4', dpi=6)
     try:
         os.mkdir(name)
     except:
         pass
-    ff = ffmpy.FFmpeg(inputs={name + '.mp4': None}, outputs={name + '/%04d.png': ['-pix_fmt yuv420p']})
-    print(ff.cmd)
+    ff = ffmpy.FFmpeg(inputs={name + '.mp4': None}, outputs={name + '/%04d.png': None})
     ff.run()
 
     targets.append(np.array([box.circles_time, box.triangles_time]))
 
-np.save('targets.npy', np.array(targets))
+np.save('generated_frames/targets.npy', np.array(targets))
