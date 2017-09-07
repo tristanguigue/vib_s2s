@@ -1,3 +1,4 @@
+"""Apply the variational information bottleneck to predict the N next pixels in an MNIST image."""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Seq
 from learners import SupervisedLossLearner
@@ -39,8 +40,8 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     test_loader = Batcher(test_data, None, test_batch)
     seq2seq = Seq2Seq(partial_seq_length, output_seq_size, hidden1_units, hidden2_units,
                       bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal, dropout=dropout)
-    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=True,
-                                    reduce_seq=True)
+    learner = DiscreteLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=True,
+                                  reduce_seq=True)
     best_loss = None
     best_accuracy = 0
 

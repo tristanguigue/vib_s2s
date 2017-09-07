@@ -1,3 +1,5 @@
+"""Apply the variational information bottleneck to predict the number of frames in which a given object was
+present in a sequence of frames."""
 from networks import Seq2LabelCNN
 from learners import SupervisedLossLearner
 from tools import Batcher
@@ -49,7 +51,7 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
     test_loader = Batcher(test_data, test_labels, test_batch)
     seq2seq = Seq2LabelCNN(seq_length, hidden_units, bottleneck_size, input_size,
                             output_size, layers, nb_samples, 16, update_prior=update_marginal)
-    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, continuous=True)
+    learner = DiscreteLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, continuous=True)
     best_loss = None
 
     for epoch in range(epochs):

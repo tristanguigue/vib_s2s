@@ -1,3 +1,4 @@
+"""Apply the variational information bottleneck to predict the label of an MNIST image."""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import StochasticFeedForwardNetwork
 from learners import SupervisedLossLearner
@@ -20,7 +21,7 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
 
     sfnn = StochasticFeedForwardNetwork(input_size, hidden_units, bottleneck_size, output_size,
                                         update_marginal, nb_samples)
-    learner = SupervisedLossLearner(sfnn, beta, learning_rate, batch_size, run_name)
+    learner = DiscreteLossLearner(sfnn, beta, learning_rate, batch_size, run_name)
     epoch_batches = int(mnist.train.num_examples / batch_size)
 
     train_data = mnist.train.images

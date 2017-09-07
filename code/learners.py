@@ -11,11 +11,19 @@ GRADIENT_GLOBAL_NORM = 10.0
 
 
 class Learner(ABC):
+    """Generic learner.
+
+    Attributes:
+        net: the network to use for learning
+        lr: the learning rate placeholder of the optimiser
+        learning_rate: the learning rate value
+        loss_op: the loss to be defined by the learners
+    """
+
     def __init__(self, network, learning_rate, train_batch, run_name):
         self.lr = tf.placeholder(tf.float32)
         self.net = network
         self.learning_rate = learning_rate
-        self.train_batch = train_batch
         self.loss_op = self.loss()
 
         with tf.name_scope('train'):
@@ -37,11 +45,17 @@ class Learner(ABC):
         self.sess.run(tf.global_variables_initializer())
         self.test_sess.run(tf.global_variables_initializer())
 
-    @abstractmethod
-    def loss(self):
-        pass
-
     def train_network(self, batch_xs, batch_ys, learning_rate):
+        """Train the network using a given batch
+
+        Args:
+            batch_xs: the input values
+            batch_ys: the target values
+            learning_rate: the learning rate for the optimiser
+
+        Return:
+            The current loss and summary
+        """
         if learning_rate:
             self.learning_rate = learning_rate
         feed_dict = {
@@ -59,6 +73,15 @@ class Learner(ABC):
         return current_loss, train_loss_summary
 
     def test_network(self, loader, epoch):
+        """Test the network using the whole data
+
+        Args:
+            loader: the batch loader to use
+            epoch: the current epoch, None if no writing is necessary
+
+        Return:
+            The test loss and accuracy
+        """
         total_accuracy = 0
         total_loss = 0
         nb_batches = loader.num_batches
@@ -83,77 +106,92 @@ class Learner(ABC):
         return total_loss / nb_batches, total_accuracy / nb_batches
 
     def predict_sequence(self, batch_xs, batch_ys=None):
+        """Predict a sequence from a batch of data, this uses the true values
+        as input to the decoder.
+
+        Args:
+            batch_xs: the input values
+            batch_ys: the target values
+
+        Return:
+            The predicted sequence
+        """
         feed_dict = {self.net.x: batch_xs}
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
         return self.test_sess.run(self.net.predicted_sequence, feed_dict=feed_dict)
 
-    def sample_sequence(self, batch_xs, batch_ys=None):
+    def sample_sequence(self, batch_xs):
+        """Sample a sequence from a batch of data.
+
+        Args:
+            batch_xs: the input values
+
+        Return:
+            The sampled sequence
+        """
         feed_dict = {self.net.x: batch_xs}
-        if batch_ys is not None:
-            feed_dict.update({self.net.y_true: batch_ys})
         return self.test_sess.run(self.net.sampled_sequence, feed_dict=feed_dict)
 
+    def kl_loss(self):
+        """The KL divergence loss either with the standard normal or with learnable
+        mean and variance of marginal.
 
-class SupervisedLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=False,
-                 continuous=False, reduce_seq=False):
-        self.beta = beta
-        self.binary = binary
-        self.continuous = continuous
-        self.reduce_seq = reduce_seq
-        super().__init__(network, learning_rate, train_batch, run_name)
-
-    def loss(self):
-        if self.binary:
-            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
-                labels=self.net.y_true, logits=self.net.output)
-        elif self.continuous:
-            mu = self.net.output
-            sigma = self.net.output_sigma
-            cross_entropy = 0.5 * (
-                tf.square(self.net.y_true - mu) / tf.square(sigma) + tf.log(2 * math.pi * tf.square(sigma)))
-        else:
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-                labels=self.net.y_true, logits=self.net.output)
-        if self.reduce_seq:
-            cross_entropy = tf.reduce_mean(cross_entropy, axis=1)
-
-        if self.net.update_prior:
+        Return:
+            The kl loss value
+        """
+        if self.net.update_marginal:
             kl_loss = kl_divergence(
                 self.net.mu, self.net.sigma, self.net.mu0, self.net.sigma0)
         else:
             kl_loss = kl_divergence_with_std(self.net.mu, self.net.sigma)
-
-        if self.beta:
-            return tf.reduce_mean(cross_entropy + self.beta * kl_loss)
-        return tf.reduce_mean(cross_entropy)
-
-
-class SequenceLossLearner(Learner):
-    def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=True):
-        self.beta = beta
-        self.binary = binary
-        super().__init__(network, learning_rate, train_batch, run_name)
+        return kl_loss
 
     def loss(self):
-        if self.binary:
-            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
-                labels=self.net.y_true, logits=self.net.output)
-        else:
-            cross_entropy = tf.square(tf.norm(self.net.y_true - self.net.output, axis=1))
+        """Loss function: I(Y, Z) - beta * I(X, Z)
+
+        Return:
+            The loss value
+        """
+        reconstruction_loss = self.reconstruction_loss()
+
+        if self.reduce_seq:
+            reconstruction_loss = tf.reduce_mean(reconstruction_loss, axis=1)
 
         if self.beta:
-            mu = tf.reshape(self.net.mu, [-1, self.net.seq_size, self.net.bottleneck_size])
-            sigma = tf.reshape(self.net.sigma, [-1, self.net.seq_size, self.net.bottleneck_size])
+            return tf.reduce_mean(reconstruction_loss + self.beta * self.kl_loss())
+        return tf.reduce_mean(reconstruction_loss)
 
-            if self.net.update_prior:
-                kl = kl_divergence(mu, sigma, self.net.mu0, self.net.sigma0, sequence=True)
-            else:
-                kl = kl_divergence_with_std(mu, sigma, sequence=True)
+    @abstractmethod
+    def reconstruction_loss(self):
+        pass
 
-            # To check
-            kl = tf.reduce_sum(kl[:, :-1], axis=1)
-            return tf.reduce_mean(tf.squeeze(cross_entropy) + self.beta * kl[:, :-1])
-        return tf.reduce_mean(cross_entropy)
 
+class DiscreteLossLearner(Learner):
+    """The loss learner for discrete data"""
+
+    def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=False,
+                 reduce_seq=False):
+        super().__init__(network, learning_rate, train_batch, beta, reduce_seq, run_name)
+
+    def reconstruction_loss(self):
+        """The cross entropy loss / log likelihood of categorical distribution"""
+
+        if self.binary:
+            return tf.nn.sigmoid_cross_entropy_with_logits(
+                labels=self.net.y_true, logits=self.net.output)
+        return tf.nn.softmax_cross_entropy_with_logits(
+            labels=self.net.y_true, logits=self.net.output)
+
+
+class ContinuousLossLearner(Learner):
+    """The loss learner for continuous data"""
+    def __init__(self, network, beta, learning_rate, train_batch, run_name, reduce_seq=False):
+        super().__init__(network, learning_rate, train_batch, beta, reduce_seq, run_name)
+
+    def reconstruction_loss(self):
+        """The log likelihood of normal distribution"""
+        mu = self.net.output
+        sigma = self.net.output_sigma
+        return 0.5 * (
+            tf.square(self.net.y_true - mu) / tf.square(sigma) + tf.log(2 * math.pi * tf.square(sigma)))

@@ -1,6 +1,6 @@
-"""Apply the variational information bottleneck to continous data."""
+"""Apply the variational information bottleneck to sequence to sequence regression on continous data."""
 from networks import Seq2SeqCont
-from learners import SupervisedLossLearner
+from learners import ContinuousLossLearner
 from tools import Batcher
 import argparse
 import time
@@ -34,10 +34,9 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, test_batch)
     seq2seq = Seq2SeqCont(partial_seq_length, output_seq_size, hidden1_units, hidden2_units,
-                      bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal,
-                      binary=False, dropout=dropout)
-    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, binary=False,
-                                    continuous=True, reduce_seq=True)
+                          bottleneck_size, 1, layers, nb_samples, update_prior=update_marginal,
+                          binary=False, dropout=dropout)
+    learner = ContinuousLossLearner(seq2seq, beta, learning_rate, batch_size, run_name, reduce_seq=True)
     best_loss = None
 
     for epoch in range(epochs):

@@ -1,5 +1,5 @@
-"""Apply the variational information bottleneck to the images to labels problems
-using Convolutional Neural Network to feed.
+"""Apply the variational information bottleneck to the predict the labels of a sequence of MNIST images
+using Convolutional Neural Network to feed the encoder.
 """
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2LabelsCNN
@@ -46,8 +46,8 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     seq2seq = Seq2LabelsCNN(seq_length, hidden1_units, hidden2_units, bottleneck_size, input_size,
                             output_size, layers, nb_samples, 16, update_prior=update_marginal,
                             dropout=dropout)
-    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name,
-                                    reduce_seq=True)
+    learner = DiscreteLossLearner(seq2seq, beta, learning_rate, batch_size, run_name,
+                                  reduce_seq=True)
     best_loss = None
     best_accuracy = 0
 

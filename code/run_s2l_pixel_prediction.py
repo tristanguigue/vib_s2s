@@ -1,3 +1,4 @@
+"""Apply the variational information bottleneck to predict the next pixel coming after a sequence."""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Pixel
 from learners import SupervisedLossLearner
@@ -37,7 +38,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     test_loader = Batcher(test_data, None, batch_size)
     seq2p = Seq2Pixel(partial_seq_length, hidden_units, bottleneck_size, 1, layers,
                       nb_samples, update_prior=update_marginal, lstm=lstm_cell)
-    learner = SupervisedLossLearner(seq2p, beta, learning_rate, batch_size, run_name, binary=True)
+    learner = DiscreteLossLearner(seq2p, beta, learning_rate, batch_size, run_name, binary=True)
     best_accuracy = 0
     best_loss = None
 

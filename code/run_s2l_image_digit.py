@@ -1,4 +1,6 @@
-"""Apply the variational information bottleneck to the images to single label problem."""
+"""Apply the variational information bottleneck to predict the label of the first MNIST images in a
+sequence.
+"""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Label
 from learners import SupervisedLossLearner
@@ -48,7 +50,7 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     seq2seq = Seq2Label(seq_length, hidden_units, bottleneck_size, input_size,
                         output_size, layers, nb_samples, update_prior=True,
                         dropout=dropout)
-    learner = SupervisedLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
+    learner = DiscreteLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
     best_accuracy = 0
 

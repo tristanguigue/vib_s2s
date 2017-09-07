@@ -3,35 +3,230 @@ from tools import tf_binarize
 from abc import ABC
 import numpy as np
 import tensorflow.contrib.layers as layers
+from layers import stochastic_layer, deterministic_layer, accuracy_layer
+from layers import gru_cell_wrapper, cnn_layer
 
 
 class StochasticNetwork(ABC):
-    def __init__(self, bottleneck_size, update_prior):
+    """Abstract Stochastic Network with Information Bottleneck. Initialise
+    the stochastic layer and the marginal parameters if necessary.
+
+    Attributes:
+        bottleneck_size: The size of the bottleneck layer
+        update_marginal: Whether to parametrise the marginal on the representation layer
+    """
+
+    def __init__(self, hidden_size, bottleneck_size, update_marginal, nb_samples, dropout):
+        self.update_marginal = update_marginal
         self.bottleneck_size = bottleneck_size
-        self.update_prior = update_prior
-        self.is_training = tf.placeholder(tf.bool, name='is-training')
+        self.nb_samples = nb_samples
+        self.dropout = dropout
 
-        with tf.name_scope('stochastic_layer'):
-            standard_mu = tf.zeros(bottleneck_size)
-            standard_sigma = tf.ones(bottleneck_size)
-            self.multivariate_std = tf.contrib.distributions.MultivariateNormalDiag(standard_mu, standard_sigma)
+        with tf.name_scope('marginal'):
+            self.sigma0 = tf.Variable(tf.ones(bottleneck_size), name='marginal-variance')
+            self.mu0 = tf.Variable(tf.zeros(bottleneck_size), name='marginal-mean')
 
-        with tf.name_scope('prior'):
-            self.sigma0 = tf.Variable(tf.ones(bottleneck_size), name='prior-variance')
-            self.mu0 = tf.Variable(tf.zeros(bottleneck_size), name='prior-mean')
+        with tf.name_scope('encoder_out'):
+            self.out_weights = self.weight_variable('out_weights', [hidden_size, 2 * bottleneck_size])
+            self.out_biases = self.bias_variable('out_biases', [2 * bottleneck_size])
 
     def weight_variable(self, name, shape):
+        """Create weight variables of linear transformations with the
+        xavier initialisation.
+
+        Args:
+            name: name of the variable
+            shape: shape of the variable
+
+        Return:
+            The created variable
+        """
         return tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer(
             uniform=False))
 
     def bias_variable(self, name, shape):
+        """Create bias variables of linear transformations initialised at 0.
+
+        Args:
+            name: name of the variable
+            shape: shape of the variable
+
+        Return:
+            The created variable
+        """
         return tf.Variable(tf.constant(0.0, shape=shape), name=name)
+
+    def representation_layer(self, x):
+        """Gets the representation layer z using a stochastic or
+        deterministic encoding.
+
+        Args:
+            x: the raw output of the decoder
+
+        Return:
+            The representation layer z
+        """
+        encoder_out = tf.matmul(x, self.out_weights) + self.out_biases
+        if self.dropout:
+            return deterministic_layer(encoder_out, self.bottleneck_size)
+        return stochastic_layer(encoder_out, self.bottleneck_size, self.nb_samples)
+
+
+class S2SStochasticNetwork(ABC):
+    """Abstract Sequence to Sequence stochastic network.
+
+    Attributes:
+        first_stack: The stack of the encoder RNN
+        second_stack: The stack of the decoder RNN
+        hidden_size1: The hidden units of the encoder RNN
+        hidden_size2: The hidden units of the decoder RNN
+        nb_layers: The number of layers of both RNNs
+        output_seq_size: The number of items to predict
+        binary: Whether the data is binary or not
+    """
+
+
+    def __init__(self, hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
+                 nb_layers, input_size, output_size, output_seq_size, binary):
+        super().__init__(hidden_size1, bottleneck_size, update_marginal)
+
+        self.first_stack = gru_cell_wrapper(hidden_size1, input_size, dropout, nb_layers)
+        self.second_stack = gru_cell_wrapper(hidden_size2, output_size, dropout, nb_layers)
+        self.hidden_size1 = hidden_size2
+        self.hidden_size2 = hidden_size2
+        self.nb_layers = nb_layers
+        self.output_seq_size = output_seq_size
+        self.binary = binary
+
+        with tf.name_scope('rnn_output'):
+            self.rnn_out_weights = self.weight_variable(
+                'rnn_out_weights', [hidden_size2, output_size])
+            self.rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
+
+        with tf.name_scope('decoder'):
+            self.dec_weights_first_input = self.weight_variable(
+                'dec_weights_first_input', [bottleneck_size, output_size])
+            self.dec_biases_first_input = self.bias_variable(
+                'dec_biases_first_input', [output_size])
+            self.dec_weights_state = self.weight_variable(
+                'dec_weights_state', [bottleneck_size, hidden_size2 * nb_layers])
+            self.dec_biases_state = self.bias_variable(
+                'dec_biases_state', [hidden_size2 * nb_layers])
+
+    def encoder_layer(self, x):
+        """The encoder of a s2s network
+
+        Args:
+            x: the input values
+
+        Return:
+            The representation layer z
+        """
+        with tf.variable_scope('encoder_rnn'):
+            outputs, state = tf.nn.dynamic_rnn(self.first_stack, x, dtype=tf.float32)
+        return self.representation_layer(outputs[:, -1])
+
+    def decoder_layer(self, z, y_true):
+        """The decoder of a s2s network
+
+        Args:
+            z: the stochastic encoding
+            y_true: the true value to feed the decoder
+
+        Return:
+            The logits output of the decoder
+        """
+        first_logits = tf.matmul(z, self.dec_weights_first_input) + self.dec_biases_first_input
+        new_state = tf.matmul(z, self.dec_weights_state) + self.dec_biases_state
+        new_state = tf.reshape(new_state, [self.nb_layers, -1, self.hidden_size2])
+        self.new_state = tuple(tf.unstack(new_state))
+
+        with tf.variable_scope('pred_rnn'):
+            pred_outputs, pred_state = tf.nn.dynamic_rnn(
+                self.second_stack, y_true, initial_state=new_state, dtype=tf.float32)
+            flat_pred_outputs = tf.reshape(pred_outputs, [-1, self.hidden_size2])
+            seq_logits = tf.matmul(flat_pred_outputs, self.rnn_out_weights) + self.rnn_out_biases
+            seq_logits = tf.reshape(seq_logits, [-1, self.output_seq_size])
+            return first_logits, seq_logits
+
+    def sample_sequence(self, first_logits, pred_rnn_state):
+        sampled_sequence = []
+        sample_logits = []
+        with tf.variable_scope('sampled_rnn'):
+            if self.binary:
+                pred_inputs = tf.round(tf.sigmoid(first_logits))
+            else:
+                pred_inputs = first_logits
+            sampled_sequence.append(tf.squeeze(pred_inputs))
+            sample_logits.append(first_logits)
+            pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
+                self.second_stack, tf.cast(tf.reshape(pred_inputs, [-1, 1, 1]), tf.float32),
+                initial_state=pred_rnn_state, dtype=tf.float32)
+
+        with tf.variable_scope('sampled_rnn', reuse=True):
+            # Loop to predict all the next pixels
+            for i in range(self.output_seq_size - 1):
+                pred_logits = tf.matmul(pred_outputs[:, -1], self.rnn_out_weights) + self.rnn_out_biases
+                if self.binary:
+                    pred_inputs = tf.round(tf.sigmoid(pred_logits))
+                else:
+                    pred_inputs = pred_logits
+                sampled_sequence.append(tf.squeeze(pred_inputs))
+                sample_logits.append(pred_logits)
+                pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
+                    self.second_stack, tf.reshape(pred_inputs, [-1, 1, 1]), initial_state=pred_rnn_state,
+                    dtype=tf.float32)
+        self.sampled_sequence = tf.transpose(tf.stack(sampled_sequence))
+
+
+class S2LStochasticNetwork(ABC):
+    """Abstract Sequence to Label stochastic network.
+
+    Attributes:
+        stack: The stack of the RNN
+        dec_weights: The weights of the decoder
+        dec_biases: The bias of the decoder
+    """
+
+    def __init__(self, hidden_size, bottleneck_size, update_marginal, dropout,
+                 nb_layers, input_size, output_size):
+        super().__init__(hidden_size, bottleneck_size, update_marginal)
+
+        self.stack = gru_cell_wrapper(hidden_size, input_size, dropout, nb_layers)
+
+        with tf.name_scope('decoder'):
+            self.dec_weights = self.weight_variable(
+                'dec_weights', [bottleneck_size, self.output_size])
+            self.dec_biases = self.bias_variable('dec_biases', [output_size])
+
+        def encoder_layer(self, x):
+            """The encoder of a sequence to label network
+
+            Args:
+                x: the input values
+
+            Return:
+                The representation layer z
+            """
+            with tf.variable_scope('encoder_rnn'):
+                outputs, state = tf.nn.dynamic_rnn(self.stack, x, dtype=tf.float32)
+            return self.representation_layer(outputs[:, -1])
 
 
 class StochasticFeedForwardNetwork(StochasticNetwork):
-    def __init__(self, input_size, hidden_size, bottleneck_size, output_size, update_prior,
-                 nb_samples):
-        super().__init__(bottleneck_size, update_prior)
+    """Simple feedforward network with two hidden layers 
+    the stochastic layer and the marginal parameters if necessary.
+
+    Attributes:
+        x: The input
+        y_true: The expected output
+        output: the predicted logits
+        accuracy: the percentage of accurate predictions
+    """
+
+    def __init__(self, input_size, hidden_size, bottleneck_size, output_size, update_marginal,
+                 nb_samples, dropout):
+        super().__init__(bottleneck_size, update_marginal)
 
         # Variables
         with tf.name_scope('input'):
@@ -46,10 +241,6 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
             h2_weights = self.weight_variable('h2_weights', [hidden_size, hidden_size])
             h2_biases = self.bias_variable('h2_biases', [hidden_size])
 
-        with tf.name_scope('encoder_out'):
-            out_weights = self.weight_variable('out_weights_mu', [hidden_size, 2 * bottleneck_size])
-            out_biases = self.bias_variable('out_biases_mu', [2 * bottleneck_size])
-
         with tf.name_scope('decoder'):
             decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
             decoder_biases = self.bias_variable('decoder_biases', [output_size])
@@ -57,55 +248,29 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
         # Model
         hidden1 = tf.nn.relu(tf.matmul(self.x, h1_weights) + h1_biases)
         hidden2 = tf.nn.relu(tf.matmul(hidden1, h2_weights) + h2_biases)
-
-        out = tf.matmul(hidden2, out_weights) + out_biases
-        self.mu = out[:, :bottleneck_size]
-        self.sigma = tf.log(1 + tf.exp(out[:, bottleneck_size:] - 5.0))
-
-        batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        z = self.mu + tf.multiply(epsilon, self.sigma)
+        z = self.representation_layer(hidden2)
         self.output = tf.matmul(z, decoder_weights) + decoder_biases
-
-        accurate_predictions = tf.equal(tf.arg_max(self.output, 1), tf.argmax(self.y_true, 1))
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        self.accuracy = accuracy_layer(tf.arg_max(self.output, 1), tf.argmax(self.y_true, 1))
 
 
-class Seq2Seq(StochasticNetwork):
+class Seq2Seq(S2SStochasticNetwork):
+    """A Sequence to sequence prediction model with stochastic layer.
+
+    Attributes:
+        x: The input
+        y_true: The expected output
+        mu: The mean of the representation layer Z
+        sigma: the diagonal covariance of the representation layer Z
+        output: the predicted logits
+        accuracy: the percentage of accurate predictions
+    """
+
     def __init__(self, partial_seq_size, output_seq_size, hidden_size1, hidden_size2,
-                 bottleneck_size, output_size, nb_layers, nb_samples, update_prior,
+                 bottleneck_size, output_size, nb_layers, nb_samples, update_marginal,
                  dropout, binary=True):
-        super().__init__(bottleneck_size, update_prior)
-        self.partial_seq_size = partial_seq_size
-        self.output_seq_size = output_seq_size
-        self.output_size = output_size
+        super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
+                         nb_layers, 1, output_size)
         seq_size = partial_seq_size + output_seq_size
-
-        first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
-        second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
-
-        if dropout:
-            first_cell = tf.contrib.rnn.DropoutWrapper(
-                first_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                input_size=1,
-                dtype=tf.float32,
-                variational_recurrent=True)
-            second_cell = tf.contrib.rnn.DropoutWrapper(
-                second_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                dtype=tf.float32,
-                input_size=output_size,
-                variational_recurrent=True)
-
-        first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
-        second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
@@ -114,151 +279,53 @@ class Seq2Seq(StochasticNetwork):
             else:
                 self.inputs = self.x
             self.inputs = tf.expand_dims(self.inputs, 2)
-            true_seq = self.inputs[:, self.partial_seq_size:
-                                   self.partial_seq_size + self.output_seq_size]
+            true_seq = self.inputs[:, partial_seq_size: partial_seq_size + output_seq_size]
             self.y_true = tf.squeeze(true_seq)
 
-        with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size1, bottleneck_size])
-            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size1, bottleneck_size])
-            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
+        z = self.encoder_layer(self.inputs[:, :partial_seq_size])
+        first_logits, seq_logits = self.decoder_layer(z, true_seq)
+        self.output = tf.concat([first_logits, seq_logits[:, :-1]], 1)
+        self.predicted_sequence = tf.cast(tf.round(tf.sigmoid(self.output)), tf.int32)
+        self.accuracy = accuracy_layer(self.predicted_sequence, tf.cast(self.y_true, tf.int32))
+
+
+class Seq2SeqCont(S2SStochasticNetwork):
+    """A Sequence to sequence prediction model for continuous data.
+
+    Attributes:
+        x: The input
+        y_true: The expected output
+        output: the predicted values
+        output_sigma: the variance of the decoding approximation
+        accuracy: the percentage of accurate predictions
+    """
+
+    def __init__(self, partial_seq_size, output_seq_size, hidden_size1, hidden_size2,
+                 bottleneck_size, output_size, nb_layers, nb_samples, update_marginal,
+                 dropout):
+        super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
+                         nb_layers, 1, output_size)
+        seq_size = partial_seq_size + output_seq_size
+
+        with tf.name_scope('input'):
+            self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
+            self.inputs = tf.expand_dims(self.x, 2)
+            true_seq = self.inputs[:, partial_seq_size: partial_seq_size + output_seq_size]
+            self.y_true = tf.squeeze(true_seq)
 
         with tf.name_scope('decoder'):
-            dec_weights_first_input = self.weight_variable(
-                'dec_weights_first_input', [bottleneck_size, self.output_size])
-            dec_biases_first_input = self.bias_variable(
-                'dec_biases_first_input', [self.output_size])
+            dec_weights_first_mu = self.weight_variable(
+                'dec_weights_first_mu', [bottleneck_size, output_size])
+            dec_biases_first_mu = self.bias_variable(
+                'dec_biases_first_mu', [self.output_size])
+            dec_weights_first_sigma = self.weight_variable(
+                'dec_weights_first_sigma', [bottleneck_size, output_size])
+            dec_biases_first_sigma = self.bias_variable(
+                'dec_biases_first_sigma', [self.output_size])
             dec_weights_state = self.weight_variable(
                 'dec_weights_state', [bottleneck_size, hidden_size2 * nb_layers])
             dec_biases_state = self.bias_variable(
                 'dec_biases_state', [hidden_size2 * nb_layers])
-
-        with tf.name_scope('rnn_output'):
-            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size2, output_size])
-            rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
-
-        with tf.variable_scope('rnn'):
-            outputs, state = tf.nn.dynamic_rnn(
-                first_stack, self.inputs[:, :self.partial_seq_size], dtype=tf.float32)
-
-        self.mu = tf.matmul(outputs[:, -1], out_weights_mu) + out_biases_mu
-        self.sigma = tf.nn.softplus(tf.matmul(outputs[:, -1], out_weights_sigma) + out_biases_sigma)
-
-        batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        if dropout:
-            z = self.mu
-        else:
-            z = self.mu + tf.multiply(self.sigma, epsilon)
-
-        first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
-        new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
-        new_state = tf.reshape(new_state, [nb_layers, -1, hidden_size2])
-        new_state = tuple(tf.unstack(new_state))
-
-        with tf.variable_scope('pred_rnn'):
-            pred_outputs, pred_state = tf.nn.dynamic_rnn(
-                second_stack, true_seq, initial_state=new_state, dtype=tf.float32)
-            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size2])
-            seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
-            seq_logits = tf.reshape(seq_logits, [-1, output_seq_size])
-            self.output = tf.concat([first_logits, seq_logits[:, :-1]], 1)
-            self.predicted_sequence = tf.cast(tf.round(tf.sigmoid(self.output)), tf.int32)
-
-        accurate_predictions = tf.equal(self.predicted_sequence, tf.cast(self.y_true, tf.int32))
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
-
-        sampled_sequence = []
-        sample_logits = []
-        with tf.variable_scope('sampled_rnn'):
-            pred_rnn_state = new_state
-            if binary:
-                pred_inputs = tf.round(tf.sigmoid(first_logits))
-            else:
-                pred_inputs = first_logits
-            sampled_sequence.append(tf.squeeze(pred_inputs))
-            sample_logits.append(first_logits)
-            pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                second_stack, tf.cast(tf.reshape(pred_inputs, [-1, 1, 1]), tf.float32),
-                initial_state=pred_rnn_state, dtype=tf.float32)
-
-        with tf.variable_scope('sampled_rnn', reuse=True):
-            # Loop to predict all the next pixels
-            for i in range(output_seq_size - 1):
-                pred_logits = tf.matmul(pred_outputs[:, -1], rnn_out_weights) + rnn_out_biases
-                if binary:
-                    pred_inputs = tf.round(tf.sigmoid(pred_logits))
-                else:
-                    pred_inputs = pred_logits
-                sampled_sequence.append(tf.squeeze(pred_inputs))
-                sample_logits.append(pred_logits)
-                pred_outputs, pred_rnn_state = tf.nn.dynamic_rnn(
-                    second_stack, tf.reshape(pred_inputs, [-1, 1, 1]), initial_state=pred_rnn_state,
-                    dtype=tf.float32)
-        self.sampled_sequence = tf.transpose(tf.stack(sampled_sequence))
-
-
-class Seq2SeqCont(StochasticNetwork):
-    def __init__(self, partial_seq_size, output_seq_size, hidden_size1, hidden_size2,
-                 bottleneck_size, output_size, nb_layers, nb_samples, update_prior,
-                 dropout, binary=True):
-        super().__init__(bottleneck_size, update_prior)
-        self.partial_seq_size = partial_seq_size
-        self.output_seq_size = output_seq_size
-        self.output_size = output_size
-        seq_size = partial_seq_size + output_seq_size
-
-        first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
-        second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
-
-        if dropout:
-            first_cell = tf.contrib.rnn.DropoutWrapper(
-                first_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                input_size=1,
-                dtype=tf.float32,
-                variational_recurrent=True)
-            second_cell = tf.contrib.rnn.DropoutWrapper(
-                second_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                dtype=tf.float32,
-                input_size=output_size,
-                variational_recurrent=True)
-
-        first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
-        second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
-
-        with tf.name_scope('input'):
-            self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
-            if binary:
-                self.inputs = tf_binarize(self.x)
-            else:
-                self.inputs = self.x
-            self.inputs = tf.expand_dims(self.inputs, 2)
-            true_seq = self.inputs[:, self.partial_seq_size:
-                                   self.partial_seq_size + self.output_seq_size]
-            self.y_true = tf.squeeze(true_seq)
-
-        with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size1, bottleneck_size])
-            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size1, bottleneck_size])
-            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
-
-        with tf.name_scope('decoder'):
-            dec_weights_first_mu = self.weight_variable('dec_weights_first_mu', [bottleneck_size, self.output_size])
-            dec_biases_first_mu = self.bias_variable('dec_biases_first_mu', [self.output_size])
-            dec_weights_first_sigma = self.weight_variable('dec_weights_first_sigma', [bottleneck_size, self.output_size])
-            dec_biases_first_sigma = self.bias_variable('dec_biases_first_sigma', [self.output_size])
-            dec_weights_state = self.weight_variable('dec_weights_state', [bottleneck_size, hidden_size2 * nb_layers])
-            dec_biases_state = self.bias_variable('dec_biases_state', [hidden_size2 * nb_layers])
 
         with tf.name_scope('rnn_output'):
             out_mu_weights = self.weight_variable('out_mu_weights', [hidden_size2, output_size])
@@ -266,21 +333,7 @@ class Seq2SeqCont(StochasticNetwork):
             out_sigma_weights = self.weight_variable('out_sigma_weights', [hidden_size2, output_size])
             out_sigma_biases = self.bias_variable('out_sigma_biases', [output_size])
 
-        with tf.variable_scope('rnn'):
-            outputs, state = tf.nn.dynamic_rnn(
-                first_stack, self.inputs[:, :self.partial_seq_size], dtype=tf.float32)
-
-        self.mu = tf.matmul(outputs[:, -1], out_weights_mu) + out_biases_mu
-        self.sigma = tf.nn.softplus(tf.matmul(outputs[:, -1], out_weights_sigma) + out_biases_sigma)
-
-        batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        if dropout:
-            z = self.mu
-        else:
-            z = self.mu + tf.multiply(self.sigma, epsilon)
+        z = self.encoder_layer(self.inputs[:, :partial_seq_size])
 
         first_mu = tf.nn.sigmoid(tf.matmul(z, dec_weights_first_mu) + dec_biases_first_mu)
         first_sigma = tf.nn.softplus(tf.matmul(z, dec_weights_first_sigma) + dec_biases_first_sigma)
@@ -290,7 +343,7 @@ class Seq2SeqCont(StochasticNetwork):
 
         with tf.variable_scope('pred_rnn'):
             pred_outputs, pred_state = tf.nn.dynamic_rnn(
-                second_stack, true_seq, initial_state=new_state, dtype=tf.float32)
+                self.second_stack, true_seq, initial_state=new_state, dtype=tf.float32)
             flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size2])
             mus = tf.nn.sigmoid(tf.matmul(flat_pred_outputs, out_mu_weights) + out_mu_biases)
             mus = tf.reshape(mus, [-1, output_seq_size])
@@ -298,190 +351,50 @@ class Seq2SeqCont(StochasticNetwork):
             sigmas = tf.reshape(mus, [-1, output_seq_size])
             self.output = tf.concat([first_mu, mus[:, :-1]], 1)
             self.output_sigma = tf.concat([first_sigma, sigmas[:, :-1]], 1)
-            self.predicted_sequence = tf.cast(tf.round(tf.sigmoid(self.output)), tf.int32)
 
-        accurate_predictions = tf.equal(self.predicted_sequence, tf.cast(self.y_true, tf.int32))
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        self.predicted_sequence = tf.cast(tf.round(tf.sigmoid(self.output)), tf.int32)
+        self.accuracy = accuracy_layer(self.predicted_sequence, tf.cast(self.y_true, tf.int32))
 
 
-class Seq2Label(StochasticNetwork):
+class Seq2Label(S2LStochasticNetwork):
     def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size,
-                 nb_layers, nb_samples, update_prior, dropout):
-        super().__init__(bottleneck_size, update_prior)
-        self.seq_size = seq_size
-        self.output_size = output_size
-
-        cell = tf.contrib.rnn.GRUCell(hidden_size)
-        if dropout:
-            cell = tf.contrib.rnn.DropoutWrapper(
-                cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                input_size=input_size,
-                dtype=tf.float32,
-                variational_recurrent=True)
-        stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
+                 nb_layers, nb_samples, update_marginal, dropout):
+        super().__init__(bottleneck_size, update_marginal)
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')
             self.y_true = tf.placeholder(tf.float32, [None, output_size], name='y-input')
             self.y_true_digit = tf.argmax(self.y_true, axis=1)
 
-        with tf.name_scope('encoder'):
-            out_weights = self.weight_variable('out_weights_mu', [hidden_size, 2 * bottleneck_size])
-            out_biases = self.bias_variable('out_biases_mu', [2 * bottleneck_size])
-
-        with tf.name_scope('decoder'):
-            dec_weights_first_input = self.weight_variable(
-                'dec_weights_first_input', [bottleneck_size, self.output_size])
-            dec_biases_first_input = self.bias_variable(
-                'dec_biases_first_input', [self.output_size])
-
-        with tf.variable_scope('rnn'):
-            outputs, state = tf.nn.dynamic_rnn(stack, self.x, dtype=tf.float32)
-
-        out = tf.matmul(outputs[:, -1], out_weights) + out_biases
-        self.mu = out[:, :bottleneck_size]
-        self.sigma = tf.log(1 + tf.exp(out[:, bottleneck_size:] - 5.0))
-
-        batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        if dropout:
-            z = self.mu
-        else:
-            z = self.mu + tf.multiply(self.sigma, epsilon)
-
-        self.output = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
-
-        accurate_predictions = tf.equal(tf.argmax(self.output, axis=1), self.y_true_digit)
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        z = self.encoder_layer(self.x)
+        self.output = tf.matmul(z, self.dec_weights) + self.dec_biases
+        self.accuracy = accuracy_layer(tf.argmax(self.output, axis=1), self.y_true_digit)
 
 
-class Seq2Labels(StochasticNetwork):
+class Seq2Labels(S2SStochasticNetwork):
     def __init__(self, seq_size, hidden_size1, hidden_size2, bottleneck_size, input_size, output_size,
-                 nb_layers, nb_samples, update_prior, dropout=False):
-        super().__init__(bottleneck_size, update_prior)
-        self.seq_size = seq_size
-        self.output_size = output_size
-
-        first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
-        second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
-
-        if dropout:
-            first_cell = tf.contrib.rnn.DropoutWrapper(
-                first_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                input_size=input_size,
-                dtype=tf.float32,
-                variational_recurrent=True)
-            second_cell = tf.contrib.rnn.DropoutWrapper(
-                second_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                dtype=tf.float32,
-                input_size=output_size,
-                variational_recurrent=True)
-
-        first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
-        second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
-
+                 nb_layers, nb_samples, update_marginal, dropout=False):
+        super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
+                         nb_layers, input_size, output_size)
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')
             self.y_true = tf.placeholder(tf.float32, [None, seq_size, output_size], name='y-input')
             self.y_true_digits = tf.argmax(self.y_true, axis=2)
 
-        with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size1, bottleneck_size])
-            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size1, bottleneck_size])
-            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
-
-        with tf.name_scope('decoder'):
-            dec_weights_first_input = self.weight_variable(
-                'dec_weights_first_input', [bottleneck_size, self.output_size])
-            dec_biases_first_input = self.bias_variable(
-                'dec_biases_first_input', [self.output_size])
-            dec_weights_state = self.weight_variable(
-                'dec_weights_state', [bottleneck_size, hidden_size2 * nb_layers])
-            dec_biases_state = self.bias_variable(
-                'dec_biases_state', [hidden_size2 * nb_layers])
-
-        with tf.name_scope('rnn_output'):
-            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size2, output_size])
-            rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
-
-        with tf.variable_scope('rnn'):
-            outputs, state = tf.nn.dynamic_rnn(first_stack, self.x, dtype=tf.float32)
-
-        self.mu = tf.matmul(outputs[:, -1], out_weights_mu) + out_biases_mu
-        self.sigma = tf.nn.softplus(tf.matmul(outputs[:, -1], out_weights_sigma) + out_biases_sigma)
-
-        batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        if dropout:
-            z = self.mu
-        else:
-            z = self.mu + tf.multiply(self.sigma, epsilon)
-
-        first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
-        new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
-        new_state = tf.reshape(new_state, [nb_layers, -1, hidden_size2])
-        new_state = tuple(tf.unstack(new_state))
-
-        with tf.variable_scope('pred_rnn'):
-            pred_outputs, pred_state = tf.nn.dynamic_rnn(
-                second_stack, self.y_true, initial_state=new_state, dtype=tf.float32)
-            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size2])
-            seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
-            seq_logits = tf.reshape(seq_logits, [-1, seq_size, output_size])
-            self.output = tf.concat([tf.expand_dims(first_logits, 1), seq_logits[:, :-1, :]], 1)
-            self.predicted_sequence = tf.argmax(self.output, axis=2)
-
-        accurate_predictions = tf.equal(self.predicted_sequence, self.y_true_digits)
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        z = self.encoder_layer(self.x)
+        first_logits, seq_logits = self.decoder_layer(z, self.y_true)
+        self.output = tf.concat([tf.expand_dims(first_logits, 1), seq_logits[:, :-1, :]], 1)
+        self.predicted_sequence = tf.argmax(self.output, axis=2)
+        self.accuracy = accuracy_layer(self.predicted_sequence, self.y_true_digit)
 
 
-class Seq2LabelsCNN(StochasticNetwork):
+class Seq2LabelsCNN(S2SStochasticNetwork):
     def __init__(self, seq_size, hidden_size1, hidden_size2, bottleneck_size, input_size, output_size,
-                 nb_layers, nb_samples, channels, update_prior, dropout):
-        super().__init__(bottleneck_size, update_prior)
-        self.seq_size = seq_size
-        self.output_size = output_size
+                 nb_layers, nb_samples, channels, update_marginal, dropout):
+        super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
+                         nb_layers, input_size, output_size)
         img_size = int(np.sqrt(input_size))
-        flat_size = int(img_size / 4) ** 2
-
-        first_cell = tf.contrib.rnn.GRUCell(hidden_size1)
-        second_cell = tf.contrib.rnn.GRUCell(hidden_size2)
-
-        if dropout:
-            first_cell = tf.contrib.rnn.DropoutWrapper(
-                first_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                input_size=input_size,
-                dtype=tf.float32,
-                variational_recurrent=True)
-            second_cell = tf.contrib.rnn.DropoutWrapper(
-                second_cell,
-                input_keep_prob=0.95,
-                output_keep_prob=0.95,
-                state_keep_prob=0.95,
-                dtype=tf.float32,
-                input_size=output_size,
-                variational_recurrent=True)
-
-        first_stack = tf.contrib.rnn.MultiRNNCell([first_cell for _ in range(nb_layers)])
-        second_stack = tf.contrib.rnn.MultiRNNCell([second_cell for _ in range(nb_layers)])
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, input_size], name='x-input')
@@ -489,203 +402,58 @@ class Seq2LabelsCNN(StochasticNetwork):
             y_true = tf.reshape(self.y_true, [-1, seq_size, output_size])
             self.y_true_digits = tf.argmax(y_true, axis=2)
 
-        with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size1, bottleneck_size])
-            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size1, bottleneck_size])
-            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
-
-        with tf.name_scope('decoder'):
-            dec_weights_first_input = self.weight_variable(
-                'dec_weights_first_input', [bottleneck_size, self.output_size])
-            dec_biases_first_input = self.bias_variable(
-                'dec_biases_first_input', [self.output_size])
-            dec_weights_state = self.weight_variable(
-                'dec_weights_state', [bottleneck_size, hidden_size2 * nb_layers])
-            dec_biases_state = self.bias_variable(
-                'dec_biases_state', [hidden_size2 * nb_layers])
-
-        with tf.name_scope('rnn_output'):
-            rnn_out_weights = self.weight_variable('rnn_out_weights', [hidden_size2, output_size])
-            rnn_out_biases = self.bias_variable('rnn_out_biases', [output_size])
-
-        x_image = tf.reshape(self.x, [-1, img_size, img_size, 1])
-        conv1 = layers.conv2d(x_image, channels, [3, 3], scope='conv1', activation_fn=tf.nn.relu)
-        pool1 = layers.max_pool2d(conv1, [2, 2], scope='pool1')
-        conv2 = layers.conv2d(pool1, channels, [3, 3], scope='conv2', activation_fn=tf.nn.relu)
-        pool2 = layers.max_pool2d(conv2, [2, 2], scope='pool2')
-        inputs = tf.reshape(pool2, [-1, seq_size, flat_size * channels])
-
-        with tf.variable_scope('rnn'):
-            outputs, state = tf.nn.dynamic_rnn(first_stack, inputs, dtype=tf.float32)
-
-        self.mu = tf.matmul(outputs[:, -1], out_weights_mu) + out_biases_mu
-        self.sigma = tf.nn.softplus(tf.matmul(outputs[:, -1], out_weights_sigma) + out_biases_sigma)
-
-        batch_size = tf.shape(inputs)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        if dropout:
-            z = self.mu
-        else:
-            z = self.mu + tf.multiply(self.sigma, epsilon)
-
-        first_logits = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
-        new_state = tf.matmul(z, dec_weights_state) + dec_biases_state
-        new_state = tf.reshape(new_state, [nb_layers, -1, hidden_size2])
-        new_state = tuple(tf.unstack(new_state))
-
-        with tf.variable_scope('pred_rnn'):
-            pred_outputs, pred_state = tf.nn.dynamic_rnn(
-                second_stack, y_true, initial_state=new_state, dtype=tf.float32)
-            flat_pred_outputs = tf.reshape(pred_outputs, [-1, hidden_size2])
-            seq_logits = tf.matmul(flat_pred_outputs, rnn_out_weights) + rnn_out_biases
-            seq_logits = tf.reshape(seq_logits, [-1, seq_size, output_size])
-            self.output = tf.concat([tf.expand_dims(first_logits, 1), seq_logits[:, :-1, :]], 1)
-            self.predicted_sequence = tf.argmax(self.output, axis=2)
-
-        accurate_predictions = tf.equal(self.predicted_sequence, self.y_true_digits)
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        rnn_inputs = cnn_layer(self.x, img_size, channels, seq_size)
+        z = self.encoder_layer(rnn_inputs)
+        first_logits, seq_logits = self.decoder_layer(z, y_true)
+        self.output = tf.concat([tf.expand_dims(first_logits, 1), seq_logits[:, :-1, :]], 1)
+        self.predicted_sequence = tf.argmax(self.output, axis=2)
+        self.accuracy = accuracy_layer(self.predicted_sequence, self.y_true_digit)
 
 
-class Seq2LabelCNN(StochasticNetwork):
+class Seq2LabelCNN(S2LStochasticNetwork):
+    """A Sequence to label model using CNN to feed the RNN encoder.
+
+    Attributes:
+        x: The input
+        y_true: The expected output
+        output: the predicted values
+        accuracy: the percentage of accurate predictions
+    """
+
     def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size,
-                 nb_layers, nb_samples, channels, update_prior):
-        super().__init__(bottleneck_size, update_prior)
-        self.seq_size = seq_size
-        self.output_size = output_size
+                 nb_layers, nb_samples, channels, update_marginal):
+        super().__init__(bottleneck_size, update_marginal)
         img_size = int(np.sqrt(input_size))
-        flat_size = int(img_size / 4) ** 2
-
-        cell = tf.contrib.rnn.GRUCell(hidden_size)
-        stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')
             self.y_true = tf.placeholder(tf.float32, [None, output_size], name='y-input')
             self.y_true_digits = tf.argmax(self.y_true, axis=1)
-
-        with tf.name_scope('encoder'):
-            out_weights_mu = self.weight_variable('out_weights_mu', [hidden_size, bottleneck_size])
-            out_biases_mu = self.bias_variable('out_biases_mu', [bottleneck_size])
-            out_weights_sigma = self.weight_variable('out_weights_logvar', [hidden_size, bottleneck_size])
-            out_biases_sigma = self.bias_variable('out_biases_logvar', [bottleneck_size])
-
-        with tf.name_scope('decoder'):
-            dec_weights_first_input = self.weight_variable(
-                'dec_weights_first_input', [bottleneck_size, self.output_size])
-            dec_biases_first_input = self.bias_variable(
-                'dec_biases_first_input', [self.output_size])
-
-        x_image = tf.reshape(self.x, [-1, img_size, img_size, 1])
-        conv1 = layers.conv2d(x_image, channels, [3, 3], scope='conv1', activation_fn=tf.nn.relu)
-        pool1 = layers.max_pool2d(conv1, [2, 2], scope='pool1')
-        conv2 = layers.conv2d(pool1, channels, [3, 3], scope='conv2', activation_fn=tf.nn.relu)
-        pool2 = layers.max_pool2d(conv2, [2, 2], scope='pool2')
-        inputs = tf.reshape(pool2, [-1, seq_size, flat_size * channels])
-
-        with tf.variable_scope('rnn'):
-            outputs, state = tf.nn.dynamic_rnn(stack, inputs, dtype=tf.float32)
-
-        self.mu = tf.matmul(outputs[:, -1], out_weights_mu) + out_biases_mu
-        self.sigma = tf.nn.softplus(tf.matmul(outputs[:, -1], out_weights_sigma) + out_biases_sigma)
-
-        batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        z = self.mu + tf.multiply(self.sigma, epsilon)
-        self.output = tf.matmul(z, dec_weights_first_input) + dec_biases_first_input
-
-        accurate_predictions = tf.equal(tf.argmax(self.output, axis=1), self.y_true_digits)
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        rnn_inputs = cnn_layer(self.x, img_size, channels, seq_size)
+        z = self.encoder_layer(rnn_inputs)
+        self.output = tf.matmul(z, self.dec_weights) + self.dec_biases
+        self.accuracy = accuracy_layer(tf.argmax(self.output, axis=1), self.y_true_digit)
 
 
-class Seq2Pixel(StochasticNetwork):
+class Seq2Pixel(S2LStochasticNetwork):
+    """A Sequence to label model for pixel prediction.
+
+    Attributes:
+        x: The input
+        y_true: The expected output
+        output: the predicted values
+        accuracy: the percentage of accurate predictions
+    """
     def __init__(self, partial_seq_size, hidden_size, bottleneck_size, output_size,
-                 nb_layers, nb_samples, update_prior, lstm):
-        super().__init__(bottleneck_size, update_prior)
-        self.partial_seq_size = partial_seq_size
+                 nb_layers, nb_samples, update_marginal, lstm):
+        super().__init__(bottleneck_size, update_marginal)
         seq_size = partial_seq_size + 1
-
-        if lstm:
-            cell = tf.contrib.rnn.BasicLSTMCell(hidden_size)
-        else:
-            cell = tf.contrib.rnn.BasicRNNCell(hidden_size)
-        stack = tf.contrib.rnn.MultiRNNCell([cell for _ in range(nb_layers)])
-
-        encoder_output = 2 * bottleneck_size
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size], name='x-input')
             self.inputs = tf.expand_dims(tf_binarize(self.x), 2)
             self.y_true = self.inputs[:, -1]
 
-        with tf.name_scope('encoder'):
-            out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
-            out_biases = self.bias_variable('out_biases', [encoder_output])
-
-        with tf.name_scope('decoder'):
-            decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
-            decoder_biases = self.bias_variable('decoder_biases', [output_size])
-
-        with tf.variable_scope('rnn'):
-            outputs, state = tf.nn.dynamic_rnn(stack, self.inputs[:, :-1], dtype=tf.float32)
-
-        encoder_output = tf.matmul(outputs[:, -1], out_weights) + out_biases
-
-        self.mu = encoder_output[:, :bottleneck_size]
-        self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
-
-        batch_size = tf.shape(self.x)[0]
-        epsilon = self.multivariate_std.sample(sample_shape=(batch_size, nb_samples))
-        epsilon = tf.reduce_mean(epsilon, 1)
-
-        z = self.mu + tf.multiply(self.sigma, epsilon)
-        self.output = tf.matmul(z, decoder_weights) + decoder_biases
-
-        accurate_predictions = tf.equal(tf.round(tf.sigmoid(self.output)), self.y_true)
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
-
-
-class StochasticCharRNN(StochasticNetwork):
-    def __init__(self, seq_size, hidden_size, bottleneck_size, output_size, nb_layers, update_prior):
-        super().__init__(bottleneck_size, update_prior)
-        self.seq_size = seq_size
-        self.output_size = output_size
-
-        stack = tf.contrib.rnn.MultiRNNCell(
-            [tf.contrib.rnn.BasicLSTMCell(hidden_size) for _ in range(nb_layers)])
-        encoder_output = 2 * bottleneck_size
-
-        with tf.name_scope('input'):
-            self.x = tf.placeholder(tf.int64, [None, seq_size], name='x-input')
-            self.embedding = tf.get_variable('embedding', [output_size, hidden_size])
-            self.y_true = self.x[:, 1:]
-
-        with tf.name_scope('encoder'):
-            out_weights = self.weight_variable('out_weights', [hidden_size, encoder_output])
-            out_biases = self.bias_variable('out_biases', [encoder_output])
-
-        with tf.name_scope('decoder'):
-            decoder_weights = self.weight_variable('decoder_weights', [bottleneck_size, output_size])
-            decoder_biases = self.bias_variable('decoder_biases', [output_size])
-
-        self.inputs = tf.nn.embedding_lookup(self.embedding, self.x)
-        outputs, state = tf.nn.dynamic_rnn(stack, self.inputs, dtype=tf.float32)
-        flat_outputs = tf.reshape(outputs, [-1, hidden_size])
-
-        encoder_output = tf.matmul(flat_outputs, out_weights) + out_biases
-
-        self.mu = encoder_output[:, :bottleneck_size]
-        self.sigma = tf.nn.softplus(encoder_output[:, bottleneck_size:])
-        epsilon = self.multivariate_std.sample()
-        z = self.mu + tf.multiply(self.sigma, epsilon)
-
-        decoder_output = tf.matmul(z, decoder_weights) + decoder_biases
-        self.output = tf.reshape(decoder_output, [-1, seq_size, output_size])[:, :-1]
-
-        predicted_char = tf.arg_max(self.output, 2)
-        accurate_predictions = tf.equal(predicted_char, self.y_true)
-        self.accuracy = 100 * tf.reduce_mean(tf.cast(accurate_predictions, tf.float32))
+        z = self.encoder_layer(self.inputs[:, :partial_seq_size])
+        self.output = tf.matmul(z, self.dec_weights) + self.dec_biases
+        self.accuracy = accuracy_layer(tf.round(tf.sigmoid(self.output)), self.y_true)
