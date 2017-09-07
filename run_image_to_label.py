@@ -20,7 +20,7 @@ def main(beta, learning_rate, nb_epochs, train_size, test_size,
     output_size = mnist.train.labels.shape[1]
 
     sfnn = StochasticFeedForwardNetwork(input_size, hidden_units, bottleneck_size, output_size,
-                                        update_marginal, nb_samples)
+                                        update_marginal, nb_samples, dropout)
     learner = DiscreteLossLearner(sfnn, beta, learning_rate, batch_size, run_name)
     epoch_batches = int(mnist.train.num_examples / batch_size)
 

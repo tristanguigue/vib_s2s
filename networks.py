@@ -214,7 +214,7 @@ class S2LStochasticNetwork(ABC):
 
 
 class StochasticFeedForwardNetwork(StochasticNetwork):
-    """Simple feedforward network with two hidden layers 
+    """Simple feedforward network with two hidden layers
     the stochastic layer and the marginal parameters if necessary.
 
     Attributes:
