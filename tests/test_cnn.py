@@ -42,18 +42,6 @@ def main(train):
     pool2 = layers.max_pool2d(conv2, [2, 2], scope='pool2')
     inputs = tf.reshape(pool2, [-1, flat_size * channels])
 
-    # # Model
-    # W_conv1 = tf.Variable(tf.truncated_normal([PATCH_SIZE, PATCH_SIZE, 1, CHANNELS], stddev=INIT_STD))
-    # b_conv1 = tf.Variable(tf.zeros([CHANNELS]))
-    # h_conv1 = tf.nn.relu(tf.nn.conv2d(x_image, W_conv1, strides=[1, 1, 1, 1], padding='SAME') + b_conv1)
-    # h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-
-    # W_conv2 = tf.Variable(tf.truncated_normal([PATCH_SIZE, PATCH_SIZE, CHANNELS, CHANNELS], stddev=INIT_STD))
-    # b_conv2 = tf.Variable(tf.zeros([CHANNELS]))
-    # h_conv2 = tf.nn.relu(tf.nn.conv2d(h_pool1, W_conv2, strides=[1, 1, 1, 1], padding='SAME') + b_conv2)
-    # h_pool2 = tf.nn.max_pool(h_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-
-    # h_pool2_flat = tf.reshape(h_pool2, [-1, int(IMG_SIZE / 4)**2 * CHANNELS])
     fc_weights = tf.Variable(tf.truncated_normal([int(IMG_SIZE / 4)**2 * CHANNELS, H_UNITS], stddev=INIT_STD))
     fc_biases = tf.Variable(tf.zeros([H_UNITS]))
     fc = tf.nn.relu(tf.matmul(inputs, fc_weights) + fc_biases)

@@ -11,9 +11,6 @@ def binarize(images, threshold=0.1):
 
 data = binarize(mnist.test.images)
 
-# plt.imshow(train_data[0].reshape((28, 28)), cmap='gray')
-# plt.show()
-
 image = np.concatenate(
     (data[0][:522], np.full(784 - 522, np.nan)))
 
