@@ -19,7 +19,7 @@ def stochastic_layer(x, bottleneck_size, nb_samples):
     epsilon = tf.reduce_mean(epsilon, 1)
 
     z = mu + tf.multiply(epsilon, sigma)
-    return z
+    return z, mu, sigma
 
 
 def deterministic_layer(x, bottleneck_size):

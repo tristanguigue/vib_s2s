@@ -37,7 +37,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
     seq2p = Seq2Pixel(partial_seq_length, hidden_units, bottleneck_size, 1, layers,
-                      nb_samples, update_prior=update_marginal, lstm=lstm_cell)
+                      nb_samples, update_marginal=update_marginal, lstm=lstm_cell)
     learner = DiscreteLossLearner(seq2p, beta, learning_rate, batch_size, run_name, binary=True)
     best_accuracy = 0
     best_loss = None

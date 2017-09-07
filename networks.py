@@ -69,10 +69,13 @@ class StochasticNetwork(ABC):
         encoder_out = tf.matmul(x, self.out_weights) + self.out_biases
         if self.dropout:
             return deterministic_layer(encoder_out, self.bottleneck_size)
-        return stochastic_layer(encoder_out, self.bottleneck_size, self.nb_samples)
+        z, mu, sigma = stochastic_layer(encoder_out, self.bottleneck_size, self.nb_samples)
+        self.mu = mu
+        self.sigma = sigma
+        return z
 
 
-class S2SStochasticNetwork(ABC):
+class S2SStochasticNetwork(StochasticNetwork):
     """Abstract Sequence to Sequence stochastic network.
 
     Attributes:
@@ -85,10 +88,9 @@ class S2SStochasticNetwork(ABC):
         binary: Whether the data is binary or not
     """
 
-
     def __init__(self, hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
                  nb_layers, input_size, output_size, output_seq_size, binary):
-        super().__init__(hidden_size1, bottleneck_size, update_marginal)
+        super().__init__(hidden_size1, bottleneck_size, update_marginal, nb_samples, dropout)
 
         self.first_stack = gru_cell_wrapper(hidden_size1, input_size, dropout, nb_layers)
         self.second_stack = gru_cell_wrapper(hidden_size2, output_size, dropout, nb_layers)
@@ -179,7 +181,7 @@ class S2SStochasticNetwork(ABC):
         self.sampled_sequence = tf.transpose(tf.stack(sampled_sequence))
 
 
-class S2LStochasticNetwork(ABC):
+class S2LStochasticNetwork(StochasticNetwork):
     """Abstract Sequence to Label stochastic network.
 
     Attributes:
@@ -189,28 +191,27 @@ class S2LStochasticNetwork(ABC):
     """
 
     def __init__(self, hidden_size, bottleneck_size, update_marginal, dropout,
-                 nb_layers, input_size, output_size):
-        super().__init__(hidden_size, bottleneck_size, update_marginal)
+                 nb_layers, input_size, output_size, nb_samples):
+        super().__init__(hidden_size, bottleneck_size, update_marginal, nb_samples, dropout)
 
         self.stack = gru_cell_wrapper(hidden_size, input_size, dropout, nb_layers)
 
         with tf.name_scope('decoder'):
-            self.dec_weights = self.weight_variable(
-                'dec_weights', [bottleneck_size, self.output_size])
+            self.dec_weights = self.weight_variable('dec_weights', [bottleneck_size, output_size])
             self.dec_biases = self.bias_variable('dec_biases', [output_size])
 
-        def encoder_layer(self, x):
-            """The encoder of a sequence to label network
+    def encoder_layer(self, x):
+        """The encoder of a sequence to label network
 
-            Args:
-                x: the input values
+        Args:
+            x: the input values
 
-            Return:
-                The representation layer z
-            """
-            with tf.variable_scope('encoder_rnn'):
-                outputs, state = tf.nn.dynamic_rnn(self.stack, x, dtype=tf.float32)
-            return self.representation_layer(outputs[:, -1])
+        Return:
+            The representation layer z
+        """
+        with tf.variable_scope('encoder_rnn'):
+            outputs, state = tf.nn.dynamic_rnn(self.stack, x, dtype=tf.float32)
+        return self.representation_layer(outputs[:, -1])
 
 
 class StochasticFeedForwardNetwork(StochasticNetwork):
@@ -226,7 +227,7 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
 
     def __init__(self, input_size, hidden_size, bottleneck_size, output_size, update_marginal,
                  nb_samples, dropout):
-        super().__init__(bottleneck_size, update_marginal)
+        super().__init__(hidden_size, bottleneck_size, update_marginal, nb_samples, dropout)
 
         # Variables
         with tf.name_scope('input'):
@@ -248,7 +249,9 @@ class StochasticFeedForwardNetwork(StochasticNetwork):
         # Model
         hidden1 = tf.nn.relu(tf.matmul(self.x, h1_weights) + h1_biases)
         hidden2 = tf.nn.relu(tf.matmul(hidden1, h2_weights) + h2_biases)
+        print(hidden2.get_shape())
         z = self.representation_layer(hidden2)
+        print(z.get_shape())
         self.output = tf.matmul(z, decoder_weights) + decoder_biases
         self.accuracy = accuracy_layer(tf.arg_max(self.output, 1), tf.argmax(self.y_true, 1))
 
@@ -269,7 +272,7 @@ class Seq2Seq(S2SStochasticNetwork):
                  bottleneck_size, output_size, nb_layers, nb_samples, update_marginal,
                  dropout, binary=True):
         super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
-                         nb_layers, 1, output_size)
+                         nb_layers, 1, output_size, output_seq_size, binary)
         seq_size = partial_seq_size + output_seq_size
 
         with tf.name_scope('input'):
@@ -304,7 +307,7 @@ class Seq2SeqCont(S2SStochasticNetwork):
                  bottleneck_size, output_size, nb_layers, nb_samples, update_marginal,
                  dropout):
         super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
-                         nb_layers, 1, output_size)
+                         nb_layers, 1, output_size, output_seq_size, binary)
         seq_size = partial_seq_size + output_seq_size
 
         with tf.name_scope('input'):
@@ -359,7 +362,8 @@ class Seq2SeqCont(S2SStochasticNetwork):
 class Seq2Label(S2LStochasticNetwork):
     def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size,
                  nb_layers, nb_samples, update_marginal, dropout):
-        super().__init__(bottleneck_size, update_marginal)
+        super().__init__(hidden_size, bottleneck_size, update_marginal, dropout,
+                         nb_layers, input_size, output_size, nb_samples)
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')
@@ -375,7 +379,7 @@ class Seq2Labels(S2SStochasticNetwork):
     def __init__(self, seq_size, hidden_size1, hidden_size2, bottleneck_size, input_size, output_size,
                  nb_layers, nb_samples, update_marginal, dropout=False):
         super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
-                         nb_layers, input_size, output_size)
+                         nb_layers, input_size, output_size, output_seq_size, binary)
 
         with tf.name_scope('input'):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')
@@ -393,7 +397,7 @@ class Seq2LabelsCNN(S2SStochasticNetwork):
     def __init__(self, seq_size, hidden_size1, hidden_size2, bottleneck_size, input_size, output_size,
                  nb_layers, nb_samples, channels, update_marginal, dropout):
         super().__init__(hidden_size1, hidden_size2, bottleneck_size, update_marginal, dropout,
-                         nb_layers, input_size, output_size)
+                         nb_layers, input_size, output_size, output_seq_size, binary)
         img_size = int(np.sqrt(input_size))
 
         with tf.name_scope('input'):
@@ -421,8 +425,9 @@ class Seq2LabelCNN(S2LStochasticNetwork):
     """
 
     def __init__(self, seq_size, hidden_size, bottleneck_size, input_size, output_size,
-                 nb_layers, nb_samples, channels, update_marginal):
-        super().__init__(bottleneck_size, update_marginal)
+                 nb_layers, nb_samples, channels, update_marginal, dropout):
+        super().__init__(hidden_size, bottleneck_size, update_marginal, dropout,
+                         nb_layers, input_size, output_size, nb_samples)
         img_size = int(np.sqrt(input_size))
 
         with tf.name_scope('input'):
@@ -445,8 +450,9 @@ class Seq2Pixel(S2LStochasticNetwork):
         accuracy: the percentage of accurate predictions
     """
     def __init__(self, partial_seq_size, hidden_size, bottleneck_size, output_size,
-                 nb_layers, nb_samples, update_marginal, lstm):
-        super().__init__(bottleneck_size, update_marginal)
+                 nb_layers, nb_samples, update_marginal, dropout):
+        super().__init__(hidden_size, bottleneck_size, update_marginal, dropout,
+                         nb_layers, 1, output_size, nb_samples)
         seq_size = partial_seq_size + 1
 
         with tf.name_scope('input'):

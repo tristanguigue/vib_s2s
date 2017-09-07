@@ -50,7 +50,7 @@ def main(beta, learning_rate, layers, train_samples, test_samples,
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, test_batch)
     seq2seq = Seq2LabelCNN(seq_length, hidden_units, bottleneck_size, input_size,
-                            output_size, layers, nb_samples, 16, update_prior=update_marginal)
+                            output_size, layers, nb_samples, 16, update_marginal=update_marginal)
     learner = ContinuousLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
 

@@ -18,12 +18,16 @@ class Learner(ABC):
         lr: the learning rate placeholder of the optimiser
         learning_rate: the learning rate value
         loss_op: the loss to be defined by the learners
+        beta: the regularisation parameter
+        reduce_seq: wheter to take the mean of the loss over a sequence
     """
 
-    def __init__(self, network, learning_rate, train_batch, run_name):
+    def __init__(self, network, learning_rate, train_batch, beta, reduce_seq, run_name):
         self.lr = tf.placeholder(tf.float32)
         self.net = network
         self.learning_rate = learning_rate
+        self.beta = beta
+        self.reduce_seq = reduce_seq
         self.loss_op = self.loss()
 
         with tf.name_scope('train'):
@@ -60,8 +64,7 @@ class Learner(ABC):
             self.learning_rate = learning_rate
         feed_dict = {
             self.net.x: batch_xs,
-            self.lr: self.learning_rate,
-            self.net.is_training: True
+            self.lr: self.learning_rate
         }
         if batch_ys is not None:
             feed_dict.update({self.net.y_true: batch_ys})
@@ -89,8 +92,7 @@ class Learner(ABC):
         for i in range(nb_batches):
             batch_xs, batch_ys = loader.next_batch()
             feed_dict = {
-                self.net.x: batch_xs,
-                self.net.is_training: False
+                self.net.x: batch_xs
             }
             if batch_ys is not None:
                 feed_dict.update({self.net.y_true: batch_ys})
@@ -172,6 +174,7 @@ class DiscreteLossLearner(Learner):
 
     def __init__(self, network, beta, learning_rate, train_batch, run_name, binary=False,
                  reduce_seq=False):
+        self.binary = binary
         super().__init__(network, learning_rate, train_batch, beta, reduce_seq, run_name)
 
     def reconstruction_loss(self):

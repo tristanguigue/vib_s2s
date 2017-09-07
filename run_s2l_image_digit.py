@@ -48,7 +48,7 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
     train_loader = Batcher(train_data, train_labels, batch_size)
     test_loader = Batcher(test_data, test_labels, test_batch)
     seq2seq = Seq2Label(seq_length, hidden_units, bottleneck_size, input_size,
-                        output_size, layers, nb_samples, update_prior=True,
+                        output_size, layers, nb_samples, update_marginal=True,
                         dropout=dropout)
     learner = DiscreteLossLearner(seq2seq, beta, learning_rate, batch_size, run_name)
     best_loss = None
