@@ -1,7 +1,7 @@
 """Apply the variational information bottleneck to predict the next pixel coming after a sequence."""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Pixel
-from learners import SupervisedLossLearner
+from learners import DiscreteLossLearner
 from tools import Batcher
 import argparse
 import time

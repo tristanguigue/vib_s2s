@@ -1,6 +1,6 @@
 """Apply the variational information bottleneck to sequence to sequence prediction on generated binary patterns."""
 from networks import Seq2Seq
-from learners import SupervisedLossLearner
+from learners import DiscreteLossLearner
 from tools import Batcher
 import argparse
 import time

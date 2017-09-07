@@ -2,7 +2,7 @@
 images."""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Labels
-from learners import SupervisedLossLearner
+from learners import DiscreteLossLearner
 from tools import Batcher
 import argparse
 import time

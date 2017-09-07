@@ -1,7 +1,7 @@
 """Apply the variational information bottleneck to predict the label of an MNIST image."""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import StochasticFeedForwardNetwork
-from learners import SupervisedLossLearner
+from learners import DiscreteLossLearner
 import argparse
 import time
 from tools import Batcher

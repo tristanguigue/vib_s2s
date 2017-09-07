@@ -1,7 +1,7 @@
 """Apply the variational information bottleneck to predict the N next pixels in an MNIST image."""
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2Seq
-from learners import SupervisedLossLearner
+from learners import DiscreteLossLearner
 from tools import Batcher
 import argparse
 import time

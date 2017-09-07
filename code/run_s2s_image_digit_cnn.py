@@ -3,7 +3,7 @@ using Convolutional Neural Network to feed the encoder.
 """
 from tensorflow.examples.tutorials.mnist import input_data
 from networks import Seq2LabelsCNN
-from learners import SupervisedLossLearner
+from learners import DiscreteLossLearner
 from tools import Batcher
 import argparse
 import time
