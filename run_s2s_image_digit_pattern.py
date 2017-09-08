@@ -50,7 +50,6 @@ def main(beta, learning_rate, seq_length, layers, train_samples, test_samples,
 
     ids = np.expand_dims(np.arange(test_samples), 1)
     indices = np.argsort(test_labels, axis=1)
-    print(test_labels_onehot.shape)
     test_labels = test_labels_onehot[ids, indices, :]
     test_data = test_data[ids, indices, :]
 

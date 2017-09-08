@@ -410,7 +410,7 @@ class Seq2LabelsCNN(S2SStochasticNetwork):
             y_true = tf.reshape(self.y_true, [-1, seq_size, output_size])
             self.y_true_digits = tf.argmax(y_true, axis=2)
 
-        rnn_inputs = cnn_layer(self.x, img_size, channels, seq_size)
+        rnn_inputs = cnn_layer(self.x, img_size, seq_size, channels)
         z = self.encoder_layer(rnn_inputs)
         first_logits, seq_logits = self.decoder_layer(z, y_true)
         self.output = tf.concat([tf.expand_dims(first_logits, 1), seq_logits], 1)
@@ -438,7 +438,7 @@ class Seq2LabelCNN(S2LStochasticNetwork):
             self.x = tf.placeholder(tf.float32, [None, seq_size, input_size], name='x-input')
             self.y_true = tf.placeholder(tf.float32, [None, output_size], name='y-input')
             self.y_true_digits = tf.argmax(self.y_true, axis=1)
-        rnn_inputs = cnn_layer(self.x, img_size, channels, seq_size)
+        rnn_inputs = cnn_layer(self.x, img_size, seq_size, channels)
         z = self.encoder_layer(rnn_inputs)
         self.output = tf.matmul(z, self.dec_weights) + self.dec_biases
         self.accuracy = accuracy_layer(tf.argmax(self.output, axis=1), self.y_true_digit)
