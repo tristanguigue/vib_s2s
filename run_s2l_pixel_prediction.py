@@ -13,7 +13,7 @@ DIR = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 
 def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_samples, test_samples,
-         epochs, hidden_units, bottleneck_size, label_selected, batch_size, lstm_cell,
+         epochs, hidden_units, bottleneck_size, label_selected, batch_size,
          save_checkpoints, nb_samples, update_marginal):
     mnist = input_data.read_data_sets(DATA_DIR, one_hot=True)
     if not partial_seq_length:
@@ -37,7 +37,7 @@ def main(beta, learning_rate, start_pos, partial_seq_length, layers, train_sampl
     train_loader = Batcher(train_data, None, batch_size)
     test_loader = Batcher(test_data, None, batch_size)
     seq2p = Seq2Pixel(partial_seq_length, hidden_units, bottleneck_size, 1, layers,
-                      nb_samples, update_marginal=update_marginal, lstm=lstm_cell)
+                      nb_samples, update_marginal=update_marginal, dropout=False)
     learner = DiscreteLossLearner(seq2p, beta, learning_rate, batch_size, run_name, binary=True)
     best_accuracy = 0
     best_loss = None
@@ -104,8 +104,6 @@ if __name__ == '__main__':
                         help='label of images selected')
     parser.add_argument('--batch', type=int, default=500,
                         help='batch size')
-    parser.add_argument('--lstm', type=int, default=1,
-                        help='is lstm cell')
     parser.add_argument('--checkpoint', type=int, default=0,
                         help='save checkpoints')
     parser.add_argument('--samples', type=int, default=1,
@@ -115,5 +113,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.beta, args.rate, args.start, args.length, args.layers, args.train, args.test, args.epochs,
-         args.hidden, args.bottleneck, args.label, args.batch, bool(args.lstm),
+         args.hidden, args.bottleneck, args.label, args.batch,
          bool(args.checkpoint), args.samples, bool(args.update_marginal))
